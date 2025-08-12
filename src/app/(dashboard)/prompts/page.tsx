@@ -4,6 +4,7 @@ import { ensureDemoData } from "@/lib/demo";
 import RunControls from "./components/RunControls";
 import type { Prisma } from "@prisma/client";
 import { computeMentionPosition } from "@/lib/position";
+import { revalidatePath } from "next/cache";
 
 function Badge({ children }: { children: React.ReactNode }) {
   return <span className="rounded bg-gray-100 px-2 py-0.5 text-xs text-gray-700">{children}</span>;
@@ -116,6 +117,8 @@ export default async function PromptsPage({ searchParams }: { searchParams: Prom
     const topic = String(formData.get("topic") || "").trim() || "general";
     if (!text || !orgId) return;
     await prisma.prompt.create({ data: { orgId, text, topic } });
+    // Revalidate this page so the new prompt appears without a manual reload
+    revalidatePath("/prompts");
   }
 
   let rows: Awaited<ReturnType<typeof getData>> = [];
@@ -188,6 +191,7 @@ export default async function PromptsPage({ searchParams }: { searchParams: Prom
               <th className="p-2 font-medium">Tags</th>
               <th className="p-2 font-medium">Location</th>
               <th className="p-2 font-medium">Created</th>
+              <th className="p-2 font-medium">Actions</th>
             </tr>
           </thead>
           <tbody>
@@ -231,12 +235,15 @@ export default async function PromptsPage({ searchParams }: { searchParams: Prom
                     </div>
                   </td>
                   <td className="p-2 text-gray-600">{timeAgo(r.prompt.createdAt)}</td>
+                  <td className="p-2">
+                    <RunControls promptId={r.prompt.id} />
+                  </td>
                 </tr>
               );
             })}
             {rows.length === 0 && (
               <tr>
-                <td colSpan={9} className="p-4 text-center text-gray-600">
+                <td colSpan={10} className="p-4 text-center text-gray-600">
                   No results.
                 </td>
               </tr>
