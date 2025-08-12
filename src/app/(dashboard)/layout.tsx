@@ -4,6 +4,11 @@ import { usePathname } from "next/navigation";
 import { UserButton, SignedIn } from "@clerk/nextjs";
 import { BarChart3, FileText, Target, Settings } from "lucide-react";
 
+const hasClerk = Boolean(
+  process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY &&
+    !String(process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY).includes("placeholder")
+);
+
 const navItems = [
   { href: "/", label: "Overview", icon: BarChart3 },
   { href: "/prompts", label: "Prompts", icon: FileText },
@@ -20,9 +25,11 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           <Link href="/" className="font-semibold">
             AI Visibility
           </Link>
-          <SignedIn>
-            <UserButton afterSignOutUrl="/" />
-          </SignedIn>
+          {hasClerk ? (
+            <SignedIn>
+              <UserButton afterSignOutUrl="/" />
+            </SignedIn>
+          ) : null}
         </div>
         <div className="px-4 py-2 text-sm text-gray-500">Organization: Coming soon</div>
         <nav className="mt-2 space-y-1 px-2">

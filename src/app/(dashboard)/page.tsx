@@ -1,5 +1,4 @@
 export const dynamic = "force-dynamic";
-import { SignedIn, SignedOut, SignInButton } from "@clerk/nextjs";
 import KPICards from "./components/KPICards";
 import VisibilityChart from "./components/VisibilityChart";
 import { prisma } from "@/lib/prisma";
@@ -32,23 +31,12 @@ export default async function OverviewPage() {
 
   return (
     <div className="space-y-6">
-      <SignedOut>
-        <div className="mx-auto max-w-md rounded border bg-white p-6 text-center">
-          <h1 className="mb-2 text-xl font-semibold">Welcome</h1>
-          <p className="mb-4 text-sm text-gray-600">Sign in to access your dashboard.</p>
-          <SignInButton mode="modal">
-            <button className="rounded bg-black px-4 py-2 text-white">Sign in</button>
-          </SignInButton>
-        </div>
-      </SignedOut>
-      <SignedIn>
-        <h1 className="text-2xl font-semibold">Overview</h1>
-        <KPICards orgId={org.id} />
-        <div>
-          <div className="mb-2 text-sm text-gray-500">Visibility % by provider (last 30d)</div>
-          <VisibilityChart points={points} />
-        </div>
-      </SignedIn>
+      <h1 className="text-2xl font-semibold">Overview</h1>
+      <KPICards orgId={org.id} />
+      <div>
+        <div className="mb-2 text-sm text-gray-500">Visibility % by provider (last 30d)</div>
+        <VisibilityChart points={points} />
+      </div>
     </div>
   );
 } 
