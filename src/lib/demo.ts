@@ -6,8 +6,6 @@ function randomInt(min: number, max: number): number {
 
 const PROVIDERS = ["openai", "anthropic", "gemini"] as const;
 
-type Provider = typeof PROVIDERS[number];
-
 function startOfDay(date: Date): Date {
   const d = new Date(date);
   d.setHours(0, 0, 0, 0);

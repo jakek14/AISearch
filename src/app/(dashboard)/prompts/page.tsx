@@ -2,6 +2,7 @@ import { prisma } from "@/lib/prisma";
 import AnswerDrawerMount from "./components/AnswerDrawerMount";
 import { ensureDemoData } from "@/lib/demo";
 import RunControls from "./components/RunControls";
+import type { Prisma } from "@prisma/client";
 
 function Badge({ children }: { children: React.ReactNode }) {
   return <span className="rounded bg-gray-100 px-2 py-0.5 text-xs text-gray-700">{children}</span>;
@@ -12,17 +13,17 @@ async function getData(orgId: string, filters: { topic?: string; provider?: stri
   const competitors = await prisma.competitor.findMany({ where: { brandId: brand?.id || "" } });
   const competitorDomains = new Set<string>(competitors.flatMap((c) => c.domains));
 
-  const wherePrompt: any = { orgId };
+  const wherePrompt: Prisma.PromptWhereInput = { orgId };
   if (filters.topic) wherePrompt.topic = filters.topic;
   const prompts = await prisma.prompt.findMany({ where: wherePrompt, orderBy: { createdAt: "desc" } });
   const promptIds = prompts.map((p) => p.id);
 
-  const whereRun: any = { promptId: { in: promptIds } };
+  const whereRun: Prisma.ProviderRunWhereInput = { promptId: { in: promptIds } };
   if (filters.provider) whereRun.provider = filters.provider;
   if (filters.from || filters.to) {
-    whereRun.finishedAt = {} as any;
-    if (filters.from) (whereRun.finishedAt as any).gte = new Date(filters.from);
-    if (filters.to) (whereRun.finishedAt as any).lte = new Date(filters.to);
+    whereRun.finishedAt = {};
+    if (filters.from) whereRun.finishedAt.gte = new Date(filters.from);
+    if (filters.to) whereRun.finishedAt.lte = new Date(filters.to);
   }
 
   const runs = await prisma.providerRun.findMany({

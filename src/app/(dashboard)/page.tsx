@@ -5,6 +5,8 @@ import VisibilityChart from "./components/VisibilityChart";
 import { prisma } from "@/lib/prisma";
 import { ensureDemoData } from "@/lib/demo";
 
+type ProviderKey = "openai" | "anthropic" | "gemini";
+
 async function getVisibilityPoints(orgId: string) {
   // Choose first brand
   const brand = await prisma.brand.findFirst({ where: { orgId } });
@@ -17,7 +19,8 @@ async function getVisibilityPoints(orgId: string) {
   for (const r of rows) {
     const key = r.date.toISOString().slice(0, 10);
     const entry = byDay.get(key) || { date: key };
-    (entry as any)[r.provider as "openai" | "anthropic" | "gemini"] = r.visibilityPct;
+    const provider = r.provider as ProviderKey;
+    (entry[provider] as number | undefined) = r.visibilityPct;
     byDay.set(key, entry);
   }
   return Array.from(byDay.values());

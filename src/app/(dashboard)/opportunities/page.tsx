@@ -1,20 +1,23 @@
 export const dynamic = "force-dynamic";
 import { prisma } from "@/lib/prisma";
 import { ensureDemoData } from "@/lib/demo";
+import type { Opportunity, Prisma } from "@prisma/client";
 
 function formatDate(d?: Date | null) {
   return d ? new Date(d).toISOString().slice(0, 10) : "—";
 }
 
-async function getOpportunities(orgId: string, filters: { status?: string }) {
+type OpportunityWithFreq = Opportunity & { citedFreq30d: number };
+
+async function getOpportunities(orgId: string, filters: { status?: string }): Promise<OpportunityWithFreq[]> {
   const brand = await prisma.brand.findFirst({ where: { orgId } });
-  if (!brand) return [] as any[];
-  const where: any = { brandId: brand.id };
+  if (!brand) return [] as OpportunityWithFreq[];
+  const where: Prisma.OpportunityWhereInput = { brandId: brand.id };
   if (filters.status) where.status = filters.status;
   const rows = await prisma.opportunity.findMany({ where, orderBy: { priorityScore: "desc" } });
 
   const since = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
-  const withFreq = await Promise.all(
+  const withFreq: OpportunityWithFreq[] = await Promise.all(
     rows.map(async (r) => {
       const freq = await prisma.citation.count({
         where: {
@@ -22,7 +25,7 @@ async function getOpportunities(orgId: string, filters: { status?: string }) {
           answer: { run: { prompt: { orgId }, finishedAt: { gte: since } } },
         },
       });
-      return { ...r, citedFreq30d: freq } as any;
+      return { ...r, citedFreq30d: freq };
     })
   );
 
@@ -62,7 +65,7 @@ export default async function OpportunitiesPage({ searchParams }: { searchParams
             </tr>
           </thead>
           <tbody>
-            {rows.map((r: any) => (
+            {rows.map((r) => (
               <tr key={r.id} className="border-t">
                 <td className="p-2">{r.domain}</td>
                 <td className="p-2">{r.citedFreq30d}</td>
