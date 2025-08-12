@@ -16,8 +16,9 @@ export async function runOpenAI(prompt: string): Promise<ProviderResult> {
 
   const response = (await client.responses.create({
     model: "gpt-4.1-mini",
-    input: `Answer the user question. Use web search to ground your answer. Include at least 5 diverse sources with URLs.\n\nQuestion: ${prompt}`,
+    input: `Answer concisely in 5-7 bullet points. Use web search to ground your answer. After the bullets, output exactly 5 raw https URLs under a 'Sources:' heading (one per line, no markdown).\n\nQuestion: ${prompt}`,
     tools: [{ type: "web_search_preview" as any }],
+    max_output_tokens: 500,
   })) as any;
 
   const text = response.output_text || "";

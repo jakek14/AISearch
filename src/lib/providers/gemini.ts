@@ -7,18 +7,44 @@ export async function runGemini(prompt: string): Promise<ProviderResult> {
   const key = process.env.GOOGLE_API_KEY;
   if (!key) throw new Error("Missing GOOGLE_API_KEY");
   const genAI = new GoogleGenerativeAI(key);
-  const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
 
-  const result = await model.generateContent({
-    contents: [{ role: "user", parts: [{ text: `Use Google Search retrieval to ground the answer. Include at least 5 diverse sources with URLs.\n\nQuestion: ${prompt}` }] }],
-    tools: [
-      {
-        google_search_retrieval: {
-          dynamicRetrievalConfig: { mode: "MODE_DYNAMIC" },
+  const candidates = ["gemini-2.5-flash", "gemini-2.0-flash", "gemini-1.5-flash"];
+
+  async function tryModel(modelName: string) {
+    const model = genAI.getGenerativeModel({ model: modelName });
+    return (await model.generateContent({
+      contents: [
+        {
+          role: "user",
+          parts: [
+            {
+              text: `Answer concisely in 5-7 bullet points. After the bullets, output exactly 5 raw https URLs under a 'Sources:' heading (one per line, no markdown).\n\nQuestion: ${prompt}`,
+            },
+          ],
         },
-      } as any,
-    ],
-  } as any);
+      ],
+      tools: [
+        {
+          google_search_retrieval: {
+            dynamicRetrievalConfig: { mode: "MODE_DYNAMIC" },
+          },
+        } as any,
+      ],
+      generationConfig: { maxOutputTokens: 500 } as any,
+    } as any));
+  }
+
+  let result: any | null = null;
+  let lastErr: any = null;
+  for (const m of candidates) {
+    try {
+      result = await tryModel(m);
+      break;
+    } catch (e) {
+      lastErr = e;
+    }
+  }
+  if (!result) throw lastErr || new Error("Gemini call failed");
 
   const response = result.response as any;
   const text = response.text();

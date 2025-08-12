@@ -15,44 +15,41 @@ export async function runAnthropic(prompt: string): Promise<ProviderResult> {
   if (!key) throw new Error("Missing ANTHROPIC_API_KEY");
   const client = new Anthropic({ apiKey: key });
 
+  const SYSTEM_CONCISE =
+    "Answer concisely in 5-7 bullet points. Use web search if available. Then output exactly 5 raw https URLs under 'Sources:' (one per line, no markdown).";
+
   // First attempt: with web_search tooling
   const withTools = async () =>
     (await client.messages.create({
       model: "claude-3-5-sonnet-latest",
-      max_tokens: 1024,
-      system:
-        "Use web search to ground your answer. Append a 'Sources:' section containing at least 5 unique, diverse raw https URLs (no markdown, one per line).",
+      max_tokens: 600,
+      system: SYSTEM_CONCISE,
       messages: [{ role: "user", content: prompt }],
       tools: [{ type: "web_search_20250305" as any, name: "web_search" }],
     } as any)) as any;
 
-  // Fallback: no tools, ask for raw URLs so our extractor can capture them
+  // Fallback: no tools
   const withoutTools = async () =>
     (await client.messages.create({
       model: "claude-3-5-sonnet-latest",
-      max_tokens: 1024,
-      system:
-        "Answer comprehensively. Append a 'Sources:' section with at least 5 raw https URLs (no markdown, one per line).",
+      max_tokens: 600,
+      system: SYSTEM_CONCISE,
       messages: [{ role: "user", content: prompt }],
     } as any)) as any;
 
-  // Try with tools, retry once on 5xx, then fallback without tools
   let msg: any;
   try {
     try {
       msg = await withTools();
     } catch (e) {
       if (isServerError(e)) {
-        // brief backoff and retry once
         await new Promise((r) => setTimeout(r, 500));
         msg = await withTools();
       } else {
-        // likely invalid_request (e.g., tools not enabled) → fallback
         msg = await withoutTools();
       }
     }
   } catch {
-    // if second attempt with tools failed, fallback without tools
     msg = await withoutTools();
   }
 
