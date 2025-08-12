@@ -8,10 +8,5 @@
     "STRIPE_SECRET_KEY": "sk_test_placeholder",
     "STRIPE_PRICE_ID": "price_test",
     "STRIPE_WEBHOOK_SECRET": "whsec_test"
-  },
-  "functions": {
-    "api/**": {
-      "runtime": "nodejs20.x"
-    }
   }
 } 
