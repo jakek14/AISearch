@@ -1,4 +1,4 @@
-# AI Search Visibility & Citations (MVP)
+# AISearch - AI Search Visibility & Citations (MVP)
 
 Stack: Next.js App Router (TS), Tailwind, shadcn/ui, Prisma(Postgres), Clerk, Stripe, Upstash Redis, BullMQ.
 
