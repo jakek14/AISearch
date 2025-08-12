@@ -11,6 +11,10 @@ const hasClerk = Boolean(
 
 const navItems = [
   { href: "/", label: "Overview", icon: BarChart3 },
+  { href: "/rankings", label: "Rankings", icon: BarChart3 },
+  { href: "/sources", label: "Sources", icon: FileText },
+  { href: "/mentions", label: "Mentions", icon: FileText },
+  { href: "/competitors", label: "Competitors", icon: Target },
   { href: "/prompts", label: "Prompts", icon: FileText },
   { href: "/opportunities", label: "Opportunities", icon: Target },
   { href: "/settings", label: "Settings", icon: Settings },

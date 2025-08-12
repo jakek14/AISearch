@@ -146,3 +146,50 @@ model Opportunity {
 
   @@index([brandId, domain])
 }
+
+model BrandRankingSnapshot {
+  id            String   @id @default(cuid())
+  brandId       String
+  topic         String
+  provider      String
+  date          DateTime
+  visibilityPct Float
+  rank          Int
+  prevRank      Int?
+
+  @@index([topic, provider, date])
+}
+
+model SourceAgg {
+  id           String   @id @default(cuid())
+  brandId      String
+  provider     String
+  domain       String
+  citations    Int
+  windowStart  DateTime
+  windowEnd    DateTime
+
+  @@index([brandId, provider, domain, windowStart, windowEnd])
+}
+
+model MentionEvent {
+  id         String   @id @default(cuid())
+  brandId    String
+  promptId   String
+  provider   String
+  occurredAt DateTime @default(now())
+  position   Int?
+  excerpt    String?
+}
+
+model Team {
+  id    String @id @default(cuid())
+  orgId String
+  name  String
+}
+
+model Workspace {
+  id    String @id @default(cuid())
+  orgId String
+  name  String
+}
