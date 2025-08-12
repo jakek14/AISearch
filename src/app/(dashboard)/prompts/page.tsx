@@ -62,29 +62,55 @@ async function getData(orgId: string, filters: { topic?: string; provider?: stri
   return rows;
 }
 
+async function getOrgIdSafe(): Promise<string | null> {
+  try {
+    if (process.env.NODE_ENV !== "production") {
+      const seeded = await ensureDemoData();
+      return seeded.org.id;
+    }
+    const org = await prisma.org.findFirst();
+    return org?.id ?? null;
+  } catch {
+    return null;
+  }
+}
+
 export default async function PromptsPage({ searchParams }: { searchParams: Promise<Record<string, string | undefined>> }) {
-  const { org } = await ensureDemoData();
   const sp = await searchParams;
+  const orgId = await getOrgIdSafe();
 
   async function createPrompt(formData: FormData) {
     "use server";
     const text = String(formData.get("text") || "").trim();
     const topic = String(formData.get("topic") || "").trim() || "general";
-    if (!text) return;
-    await prisma.prompt.create({ data: { orgId: org.id, text, topic } });
+    if (!text || !orgId) return;
+    await prisma.prompt.create({ data: { orgId, text, topic } });
   }
 
-  const rows = await getData(org.id, {
-    topic: sp.topic,
-    provider: sp.provider,
-    hasMentions: sp.hasMentions,
-    from: sp.from,
-    to: sp.to,
-  });
+  let rows: Awaited<ReturnType<typeof getData>> = [];
+  if (orgId) {
+    try {
+      rows = await getData(orgId, {
+        topic: sp.topic,
+        provider: sp.provider,
+        hasMentions: sp.hasMentions,
+        from: sp.from,
+        to: sp.to,
+      });
+    } catch {
+      rows = [];
+    }
+  }
 
   return (
     <div className="space-y-6">
       <h1 className="text-2xl font-semibold">Prompts</h1>
+
+      {orgId ? null : (
+        <div className="rounded border border-yellow-200 bg-yellow-50 p-3 text-sm text-yellow-900">
+          Database not available or no organization found. Configure your database and reload.
+        </div>
+      )}
 
       <form action={createPrompt} className="rounded border bg-white p-4 space-y-2">
         <div>
@@ -95,7 +121,7 @@ export default async function PromptsPage({ searchParams }: { searchParams: Prom
           <label className="block text-sm font-medium">Topic</label>
           <input name="topic" className="mt-1 w-full rounded border p-2" placeholder="e.g., project-management" />
         </div>
-        <button className="rounded bg-black px-4 py-2 text-white">Add Prompt</button>
+        <button className="rounded bg-black px-4 py-2 text-white" disabled={!orgId}>Add Prompt</button>
       </form>
 
       <form className="grid grid-cols-1 gap-3 rounded border bg-white p-4 sm:grid-cols-2 lg:grid-cols-6">
