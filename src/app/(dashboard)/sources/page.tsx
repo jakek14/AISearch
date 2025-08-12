@@ -3,6 +3,10 @@ import SourceUsageChart, { type UsagePoint } from "./SourceUsageChart";
 
 export const dynamic = "force-dynamic";
 
+function faviconUrl(domain: string, size: number = 24) {
+  return `https://www.google.com/s2/favicons?domain=${encodeURIComponent(domain)}&sz=${size}`;
+}
+
 type Row = {
   domain: string;
   usedPct: number; // 0..1
@@ -164,7 +168,19 @@ export default async function SourcesPage({ searchParams }: { searchParams: Prom
           <tbody>
             {rows.slice(0, 100).map((r) => (
               <tr key={r.domain} className="border-t">
-                <td className="px-3 py-2">{r.domain}</td>
+                <td className="px-3 py-2">
+                  <div className="flex items-center gap-2">
+                    <img
+                      src={faviconUrl(r.domain, 24)}
+                      width={16}
+                      height={16}
+                      alt=""
+                      className="h-4 w-4 rounded"
+                      loading="lazy"
+                    />
+                    <span>{r.domain}</span>
+                  </div>
+                </td>
                 <td className="px-3 py-2">
                   <span className={
                     r.type === "Editorial"
