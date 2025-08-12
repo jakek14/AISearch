@@ -2,7 +2,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { UserButton, SignedIn } from "@clerk/nextjs";
-import { LayoutGrid, MessageSquare, Globe2, Tag, Users2, CreditCard, Receipt } from "lucide-react";
+import { LayoutGrid, MessageSquare, Globe2, Tag, Users2, CreditCard, Receipt, Briefcase } from "lucide-react";
 import { useEffect, useState } from "react";
 
 const hasClerk = Boolean(
@@ -60,6 +60,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
               <NavLink href="/" label="Dashboard" icon={LayoutGrid} />
               <NavLink href="/prompts" label="Prompts" icon={MessageSquare} />
               <NavLink href="/sources" label="Sources" icon={Globe2} />
+              <NavLink href="/company" label="Company" icon={Briefcase} />
             </nav>
           </div>
 
