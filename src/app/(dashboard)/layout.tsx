@@ -10,7 +10,9 @@ const hasClerk = Boolean(
     !String(process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY).includes("placeholder")
 );
 
-function NavLink({ href, label, icon: Icon, badge }: { href: string; label: string; icon: any; badge?: string | number }) {
+import type { LucideIcon } from "lucide-react";
+
+function NavLink({ href, label, icon: Icon, badge }: { href: string; label: string; icon: LucideIcon; badge?: string | number }) {
   const pathname = usePathname();
   const active = pathname === href;
   return (
