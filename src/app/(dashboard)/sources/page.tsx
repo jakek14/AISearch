@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/prisma";
+import SourceUsageChart, { type UsagePoint } from "./SourceUsageChart";
 
 export const dynamic = "force-dynamic";
 
@@ -37,6 +38,8 @@ export default async function SourcesPage({ searchParams }: { searchParams: Prom
 
   let rows: Row[] = [];
   let totalRuns = 0;
+  let points: UsagePoint[] = [];
+  let topDomains: string[] = [];
 
   try {
     // Resolve a brand/org scope
@@ -58,6 +61,16 @@ export default async function SourcesPage({ searchParams }: { searchParams: Prom
 
       const domainToUsage = new Map<string, { chats: number; totalCitations: number }>();
 
+      // Build per-day aggregates for usage%
+      const dayKeys: string[] = [];
+      const startMs = new Date(new Date().toISOString().slice(0, 10)).getTime() - (days - 1) * 86400000;
+      for (let i = 0; i < days; i++) {
+        const d = new Date(startMs + i * 86400000);
+        dayKeys.push(d.toISOString().slice(0, 10));
+      }
+      const byDay = new Map<string, { total: number; domainChats: Map<string, number> }>();
+      dayKeys.forEach((k) => byDay.set(k, { total: 0, domainChats: new Map() }));
+
       for (const run of runs) {
         const citations = run.answer?.citations ?? [];
         if (!citations.length) continue;
@@ -66,12 +79,18 @@ export default async function SourcesPage({ searchParams }: { searchParams: Prom
           const count = domainsInThisRun.get(c.domain) || 0;
           domainsInThisRun.set(c.domain, count + 1);
         }
+        // per-domain overall usage + per-day usage
+        const dayKey = new Date(run.finishedAt!).toISOString().slice(0, 10);
+        const day = byDay.get(dayKey) || { total: 0, domainChats: new Map() };
+        day.total += 1;
         for (const [domain, count] of domainsInThisRun.entries()) {
           const agg = domainToUsage.get(domain) || { chats: 0, totalCitations: 0 };
           agg.chats += 1;
           agg.totalCitations += count;
           domainToUsage.set(domain, agg);
+          day.domainChats.set(domain, (day.domainChats.get(domain) || 0) + 1);
         }
+        byDay.set(dayKey, day);
       }
 
       rows = Array.from(domainToUsage.entries())
@@ -81,11 +100,27 @@ export default async function SourcesPage({ searchParams }: { searchParams: Prom
           avgCitations: agg.totalCitations / Math.max(1, agg.chats),
           type: classifyDomain(domain),
         }))
-        .sort((a, b) => b.usedPct - a.usedPct)
-        .slice(0, 100);
+        .sort((a, b) => b.usedPct - a.usedPct);
+
+      topDomains = rows.slice(0, 5).map((r) => r.domain);
+
+      // Build chart points: usage% per day per top domain
+      points = dayKeys.map((k) => {
+        const d = byDay.get(k) || { total: 0, domainChats: new Map<string, number>() };
+        const obj: UsagePoint = { date: k };
+        for (const domain of topDomains) {
+          const denom = d.total || 0;
+          const num = d.domainChats.get(domain) || 0;
+          const pct = denom > 0 ? (num / denom) * 100 : 0;
+          obj[domain] = Math.round(pct);
+        }
+        return obj;
+      });
     }
   } catch {
     rows = [];
+    points = [];
+    topDomains = [];
   }
 
   return (
@@ -110,6 +145,12 @@ export default async function SourcesPage({ searchParams }: { searchParams: Prom
         <button className="ml-auto rounded bg-black px-3 py-1 text-sm text-white">Apply</button>
       </form>
 
+      {topDomains.length > 0 && points.length > 0 ? (
+        <SourceUsageChart points={points} domains={topDomains} />
+      ) : (
+        <div className="rounded-xl border border-gray-200 bg-white/60 p-4 text-sm text-gray-600">No chart data yet.</div>
+      )}
+
       <div className="overflow-hidden rounded border bg-white">
         <table className="w-full table-auto text-sm">
           <thead className="bg-gray-50">
@@ -121,7 +162,7 @@ export default async function SourcesPage({ searchParams }: { searchParams: Prom
             </tr>
           </thead>
           <tbody>
-            {rows.map((r) => (
+            {rows.slice(0, 100).map((r) => (
               <tr key={r.domain} className="border-t">
                 <td className="px-3 py-2">{r.domain}</td>
                 <td className="px-3 py-2">
