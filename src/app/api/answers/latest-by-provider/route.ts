@@ -11,7 +11,14 @@ export async function GET(req: Request) {
     if (!promptId) return NextResponse.json({ error: "Missing promptId" }, { status: 400 });
 
     const providers = ["openai", "anthropic", "gemini"] as const;
-    const result: Record<string, any> = {};
+    type ProviderKey = (typeof providers)[number];
+    type ProviderRunResp = {
+      run: { id: string; provider: string; finishedAt: Date | string | null } | null;
+      answer: { id: string; text: string } | null;
+      citations: { id: string; url: string; domain: string; title?: string | null; rankHint?: number | null }[];
+    };
+
+    const result: Partial<Record<ProviderKey, ProviderRunResp>> = {};
 
     for (const p of providers) {
       const run = await prisma.providerRun.findFirst({
