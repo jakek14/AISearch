@@ -13,7 +13,7 @@ type RankingSnapshotRow = {
 
 export const dynamic = "force-dynamic";
 
-export default async function RankingsPage({ searchParams }: { searchParams: Record<string, string | undefined> }) {
+export default async function RankingsPage({ searchParams }: { searchParams: Promise<Record<string, string | undefined>> }) {
   const sp = await searchParams;
   const provider = sp.provider || "openai";
   const topic = sp.topic;
