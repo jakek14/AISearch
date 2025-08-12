@@ -1,5 +1,5 @@
 {
-  "buildCommand": "npm run build",
+  "buildCommand": "npm run prisma:generate && npm run build",
   "installCommand": "npm ci --legacy-peer-deps",
   "env": {
     "NEXT_TELEMETRY_DISABLED": "1",
