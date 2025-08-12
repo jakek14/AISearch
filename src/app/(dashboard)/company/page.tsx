@@ -2,10 +2,14 @@ import { prisma } from "@/lib/prisma";
 import { revalidatePath } from "next/cache";
 
 async function getOrgAndBrand() {
-  const org = await prisma.org.findFirst();
-  if (!org) return { org: null as { id: string } | null, brand: null as { id: string; name: string; domains: string[] } | null };
-  const brand = await prisma.brand.findFirst({ where: { orgId: org.id } });
-  return { org, brand };
+  try {
+    const org = await prisma.org.findFirst();
+    if (!org) return { org: null as { id: string } | null, brand: null as { id: string; name: string; domains: string[] } | null };
+    const brand = await prisma.brand.findFirst({ where: { orgId: org.id } });
+    return { org, brand };
+  } catch {
+    return { org: null as { id: string } | null, brand: null as { id: string; name: string; domains: string[] } | null };
+  }
 }
 
 async function saveCompany(formData: FormData) {
@@ -25,7 +29,7 @@ async function saveCompany(formData: FormData) {
 }
 
 export default async function CompanyPage() {
-  const { brand } = await getOrgAndBrand();
+  const { org, brand } = await getOrgAndBrand();
   const name = brand?.name ?? "";
   const domain = brand?.domains?.[0] ?? "";
 
@@ -34,6 +38,12 @@ export default async function CompanyPage() {
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-semibold">Company</h1>
       </div>
+
+      {!org ? (
+        <div className="rounded border border-yellow-200 bg-yellow-50 p-3 text-sm text-yellow-900">
+          Database not available. Once your database is connected, set your company name and domain here.
+        </div>
+      ) : null}
 
       <div className="overflow-hidden rounded-xl border border-gray-200 bg-white p-4 shadow-sm">
         <div className="text-sm font-medium text-gray-700">Edit Company</div>
@@ -46,7 +56,7 @@ export default async function CompanyPage() {
             <label className="mb-1 block text-sm text-gray-600">Domain</label>
             <input name="domain" defaultValue={domain} className="w-full rounded-md border px-3 py-2 text-sm" placeholder="acme.com" />
           </div>
-          <button type="submit" className="inline-flex items-center gap-2 rounded-md bg-black px-3 py-2 text-sm font-medium text-white">
+          <button type="submit" className="inline-flex items-center gap-2 rounded-md bg-black px-3 py-2 text-sm font-medium text-white" disabled={!org}>
             <span className="i-lucide-save" aria-hidden /> Save
           </button>
         </form>

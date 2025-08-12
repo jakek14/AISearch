@@ -10,11 +10,16 @@ export default async function SourcesPage({ searchParams }: { searchParams: Prom
   const sp = await searchParams;
   const provider = sp.provider || "openai";
   const brandName = sp.brand;
-  const brand = brandName ? await prisma.brand.findFirst({ where: { name: brandName } }) : await prisma.brand.findFirst();
-  const where: Partial<{ provider: string; brandId: string }> = { provider, ...(brand ? { brandId: brand.id } : {}) };
 
-  const client = (prisma as unknown as { sourceAgg: SourceAggClient }).sourceAgg;
-  const rows = (await client.findMany({ where, orderBy: { citations: "desc" }, take: 100 })) as SourceAggRow[];
+  let rows: SourceAggRow[] = [];
+  try {
+    const brand = brandName ? await prisma.brand.findFirst({ where: { name: brandName } }) : await prisma.brand.findFirst();
+    const where: Partial<{ provider: string; brandId: string }> = { provider, ...(brand ? { brandId: brand.id } : {}) };
+    const client = (prisma as unknown as { sourceAgg: SourceAggClient }).sourceAgg;
+    rows = (await client.findMany({ where, orderBy: { citations: "desc" }, take: 100 })) as SourceAggRow[];
+  } catch {
+    rows = [];
+  }
 
   return (
     <div className="space-y-4">
@@ -42,6 +47,11 @@ export default async function SourcesPage({ searchParams }: { searchParams: Prom
               <td>{r.citations}</td>
             </tr>
           ))}
+          {rows.length === 0 && (
+            <tr>
+              <td colSpan={2} className="py-6 text-center text-gray-600">No data.</td>
+            </tr>
+          )}
         </tbody>
       </table>
     </div>
