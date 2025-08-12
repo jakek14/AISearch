@@ -3,15 +3,35 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "next dev --turbopack",
+    "dev": "next dev -p 3000",
     "build": "next build",
     "start": "next start",
-    "lint": "next lint"
+    "lint": "next lint",
+    "migrate": "prisma migrate dev",
+    "prisma:generate": "prisma generate",
+    "format": "prettier --write ."
   },
   "dependencies": {
+    "@anthropic-ai/sdk": "^0.59.0",
+    "@clerk/nextjs": "^6.30.0",
+    "@google/generative-ai": "^0.24.1",
+    "@prisma/client": "^6.13.0",
+    "@stripe/stripe-js": "^7.8.0",
+    "@upstash/redis": "^1.35.3",
+    "bullmq": "^5.56.10",
+    "class-variance-authority": "^0.7.1",
+    "clsx": "^2.1.1",
+    "lucide-react": "^0.539.0",
     "next": "15.4.6",
+    "openai": "^5.12.2",
+    "prisma": "^6.13.0",
     "react": "19.1.0",
-    "react-dom": "19.1.0"
+    "react-dom": "19.1.0",
+    "recharts": "^3.1.2",
+    "stripe": "^18.4.0",
+    "tailwind-merge": "^3.3.1",
+    "tldts": "^7.0.11",
+    "zod": "^4.0.17"
   },
   "devDependencies": {
     "@eslint/eslintrc": "^3",
@@ -21,12 +41,14 @@
     "@types/react-dom": "^19",
     "eslint": "^9",
     "eslint-config-next": "15.4.6",
+    "prettier": "^3.6.2",
     "tailwindcss": "^4",
     "typescript": "^5"
   },
-  "sideEffects": "false",
+  "sideEffects": false,
   "engines": {
     "node": ">=18.17.0",
     "npm": ">=9"
-  }
+  },
+  "type": "module"
 }

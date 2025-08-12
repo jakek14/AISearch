@@ -1,0 +1,148 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Org {
+  id        String   @id @default(cuid())
+  name      String
+  plan      String   @default("free")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  users     User[]
+  brands    Brand[]
+  prompts   Prompt[]
+}
+
+model User {
+  id        String   @id @default(cuid())
+  orgId     String
+  role      String   @default("member")
+  email     String   @unique
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  org       Org      @relation(fields: [orgId], references: [id])
+}
+
+model Brand {
+  id        String   @id @default(cuid())
+  orgId     String
+  name      String
+  aliases   String[] @db.Text
+  domains   String[] @db.Text
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  org       Org      @relation(fields: [orgId], references: [id])
+  competitors Competitor[]
+  mentions   Mention[]
+}
+
+model Competitor {
+  id      String   @id @default(cuid())
+  brandId String
+  name    String
+  aliases String[] @db.Text
+  domains String[] @db.Text
+  brand   Brand    @relation(fields: [brandId], references: [id])
+}
+
+model Prompt {
+  id        String   @id @default(cuid())
+  orgId     String
+  text      String
+  topic     String
+  locale    String   @default("en-US")
+  active    Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  org       Org      @relation(fields: [orgId], references: [id])
+  providerRuns ProviderRun[]
+}
+
+model ProviderRun {
+  id           String    @id @default(cuid())
+  promptId     String
+  provider     String
+  model        String
+  status       String
+  startedAt    DateTime?
+  finishedAt   DateTime?
+  tokensIn     Int?
+  tokensOut    Int?
+  costUsd      Float?    @default(0)
+  rawJsonPath  String?
+  prompt       Prompt    @relation(fields: [promptId], references: [id])
+  answer       Answer?
+}
+
+model Answer {
+  id            String     @id @default(cuid())
+  providerRunId String     @unique
+  text          String
+  language      String     @default("en")
+  createdAt     DateTime   @default(now())
+  citations     Citation[]
+  mentions      Mention[]
+  run           ProviderRun @relation(fields: [providerRunId], references: [id])
+}
+
+model Citation {
+  id          String   @id @default(cuid())
+  answerId    String
+  url         String
+  domain      String
+  title       String?
+  publishedAt DateTime?
+  rankHint    Float?
+  answer      Answer   @relation(fields: [answerId], references: [id])
+
+  @@index([domain])
+  @@index([url])
+}
+
+model Mention {
+  id           String   @id @default(cuid())
+  answerId     String
+  brandId      String
+  confidence   Float    @default(1)
+  excerptStart Int?
+  excerptEnd   Int?
+  answer       Answer   @relation(fields: [answerId], references: [id])
+  brand        Brand    @relation(fields: [brandId], references: [id])
+
+  @@index([brandId])
+}
+
+model VisibilitySnapshot {
+  id            String   @id @default(cuid())
+  brandId       String
+  topic         String
+  provider      String
+  date          DateTime @default(now())
+  visibilityPct Float
+
+  @@index([brandId, topic, provider, date])
+}
+
+model Opportunity {
+  id               String   @id @default(cuid())
+  brandId          String
+  domain           String
+  firstSeen        DateTime @default(now())
+  lastSeen         DateTime @default(now())
+  competitorsCited String[] @db.Text
+  priorityScore    Float    @default(0)
+  status           String   @default("new")
+
+  @@index([brandId, domain])
+}
