@@ -5,9 +5,14 @@ import RunControls from "./components/RunControls";
 import type { Prisma } from "@prisma/client";
 import { computeMentionPosition } from "@/lib/position";
 import { revalidatePath } from "next/cache";
+import PromptDeleteDialog from "./components/PromptDeleteDialog";
 
 function Badge({ children }: { children: React.ReactNode }) {
   return <span className="rounded bg-gray-100 px-2 py-0.5 text-xs text-gray-700">{children}</span>;
+}
+
+function faviconUrl(domain: string, size: number = 24) {
+  return `https://www.google.com/s2/favicons?domain=${encodeURIComponent(domain)}&sz=${size}`;
 }
 
 function flagForLocale(locale: string): { flag: string; region: string } {
@@ -70,19 +75,30 @@ async function getData(orgId: string, filters: { topic?: string; provider?: stri
     const visibilityPct = youMentioned ? 100 : 0;
     // Position heuristic for your brand in latest answer
     const position = latestAnswer && brand ? computeMentionPosition(latestAnswer.text, [brand.name, ...competitors.map((c) => c.name)]) : null;
-    // Top chips: include your brand (A) if mentioned and any competitors whose names appear
-    const tops: { key: string; label: string; type: "brand" | "competitor" }[] = [];
+
+    // Build Top: order by earliest appearance in latest answer, include max 3, use favicons
+    const tops: { key: string; type: "brand" | "competitor"; domain: string }[] = [];
     if (latestAnswer) {
       const lower = latestAnswer.text.toLowerCase();
-      if (brand && lower.includes(brand.name.toLowerCase())) tops.push({ key: `brand-${brand.id}`, label: brand.name[0] || "A", type: "brand" });
+      const entries: { key: string; type: "brand" | "competitor"; domain: string; pos: number }[] = [];
+      if (brand) {
+        const pos = lower.indexOf(brand.name.toLowerCase());
+        if (pos >= 0) entries.push({ key: `brand-${brand.id}`, type: "brand", domain: brand.domains[0] || "", pos });
+      }
       for (const c of competitors) {
-        if (lower.includes(c.name.toLowerCase())) tops.push({ key: c.id, label: c.name[0] || "C", type: "competitor" });
+        const pos = lower.indexOf(c.name.toLowerCase());
+        if (pos >= 0) entries.push({ key: c.id, type: "competitor", domain: c.domains[0] || "", pos });
+      }
+      entries.sort((a, b) => a.pos - b.pos);
+      for (const e of entries.slice(0, 3)) {
+        tops.push({ key: e.key, type: e.type, domain: e.domain });
       }
     }
+
     return {
       prompt: p,
       position,
-      sentiment: null as null | "pos" | "neg" | "neu", // placeholder, not computed yet
+      sentiment: null as null | "pos" | "neg" | "neu",
       visibilityPct,
       tops,
     };
@@ -119,6 +135,35 @@ export default async function PromptsPage({ searchParams }: { searchParams: Prom
     await prisma.prompt.create({ data: { orgId, text, topic } });
     // Revalidate this page so the new prompt appears without a manual reload
     revalidatePath("/prompts");
+  }
+
+  async function deletePrompt(formData: FormData) {
+    "use server";
+    const id = String(formData.get("id") || "").trim();
+    if (!id) return;
+    // Hard cascade delete for all data tied to this prompt across providers
+    // Find runs first
+    const runs = await prisma.providerRun.findMany({ where: { promptId: id }, select: { id: true } });
+    const runIds = runs.map((r) => r.id);
+    if (runIds.length > 0) {
+      const answers = await prisma.answer.findMany({ where: { providerRunId: { in: runIds } }, select: { id: true } });
+      const answerIds = answers.map((a) => a.id);
+      if (answerIds.length > 0) {
+        await prisma.citation.deleteMany({ where: { answerId: { in: answerIds } } });
+        await prisma.mention.deleteMany({ where: { answerId: { in: answerIds } } });
+      }
+      await prisma.answer.deleteMany({ where: { providerRunId: { in: runIds } } });
+    }
+    await prisma.providerRun.deleteMany({ where: { promptId: id } });
+    // Remove historical aggregates that might reference this prompt indirectly
+    // VisibilitySnapshots are per brand/topic/provider/date; we won't try to surgically edit historical rows here.
+    // They will be recomputed by nightly jobs; for now leave as-is.
+    await prisma.prompt.delete({ where: { id } });
+    // Revalidate key pages that surface prompt/answer/citation data
+    revalidatePath("/");
+    revalidatePath("/prompts");
+    revalidatePath("/sources");
+    revalidatePath("/opportunities");
   }
 
   let rows: Awaited<ReturnType<typeof getData>> = [];
@@ -203,9 +248,7 @@ export default async function PromptsPage({ searchParams }: { searchParams: Prom
                     <input type="checkbox" aria-label="Select row" />
                   </td>
                   <td className="p-2 max-w-xl">
-                    <a href={`?view=${r.prompt.id}`} className="text-gray-900 hover:underline">
-                      {r.prompt.text}
-                    </a>
+                    <PromptDeleteDialog id={r.prompt.id} text={r.prompt.text} onDelete={deletePrompt} />
                   </td>
                   <td className="p-2 tabular-nums">{r.position ?? "—"}</td>
                   <td className="p-2">—</td>
@@ -213,17 +256,20 @@ export default async function PromptsPage({ searchParams }: { searchParams: Prom
                   <td className="p-2">
                     <div className="flex flex-wrap gap-1">
                       {r.tops.map((t) => (
-                        <span
+                        <img
                           key={t.key}
+                          src={t.domain ? faviconUrl(t.domain, 32) : "/favicon.ico"}
+                          width={24}
+                          height={24}
+                          alt=""
+                          title={t.type === "brand" ? "Your brand" : "Competitor"}
                           className={
                             t.type === "brand"
-                              ? "inline-flex h-6 min-w-6 items-center justify-center rounded bg-black px-1 text-xs font-medium text-white"
-                              : "inline-flex h-6 min-w-6 items-center justify-center rounded bg-gray-100 px-1 text-xs font-medium text-gray-700"
+                              ? "h-6 w-6 rounded ring-2 ring-black"
+                              : "h-6 w-6 rounded border border-gray-200"
                           }
-                          title={t.type === "brand" ? "Your brand" : "Competitor"}
-                        >
-                          {t.label}
-                        </span>
+                          loading="lazy"
+                        />
                       ))}
                     </div>
                   </td>
