@@ -6,7 +6,7 @@ type SourceAggRow = { id: string; brandId: string; provider: string; domain: str
 
 type SourceAggClient = { findMany: (args: unknown) => Promise<unknown[]> };
 
-export default async function SourcesPage({ searchParams }: { searchParams: Record<string, string | undefined> }) {
+export default async function SourcesPage({ searchParams }: { searchParams: Promise<Record<string, string | undefined>> }) {
   const sp = await searchParams;
   const provider = sp.provider || "openai";
   const brandName = sp.brand;
