@@ -49,9 +49,6 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
               </Link>
             );
           })}
-          <Link href="/demo" className="mt-3 block rounded px-3 py-2 text-sm hover:bg-gray-50">
-            Public Demo
-          </Link>
         </nav>
       </aside>
       <section className="container mx-auto max-w-5xl flex-1 p-6">{children}</section>
