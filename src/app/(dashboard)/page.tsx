@@ -29,8 +29,13 @@ async function getVisibilityPoints(brandId: string, provider?: string, days: num
 
 export default async function OverviewPage({ searchParams }: { searchParams: Promise<Record<string, string | undefined>> }) {
   const sp = await searchParams;
-  const { org } = await ensureDemoData();
-  const brands = await prisma.brand.findMany({ where: { orgId: org.id }, orderBy: { name: "asc" } });
+  // Only seed locally to avoid production write issues
+  if (process.env.NODE_ENV !== "production") {
+    await ensureDemoData();
+  }
+  // Fetch org/brands normally
+  const org = await prisma.org.findFirst();
+  const brands = org ? await prisma.brand.findMany({ where: { orgId: org.id }, orderBy: { name: "asc" } }) : [];
   const activeBrandId = sp.brandId || brands[0]?.id;
   const days = Number(sp.days || "30");
   const provider = sp.provider && sp.provider !== "all" ? sp.provider : undefined;
@@ -43,7 +48,7 @@ export default async function OverviewPage({ searchParams }: { searchParams: Pro
         <h1 className="text-2xl font-semibold">Dashboard</h1>
       </div>
       <Toolbar brands={brands.map((b) => ({ id: b.id, name: b.name }))} />
-      <KPICards orgId={org.id} />
+      {org ? <KPICards orgId={org.id} /> : null}
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
         <div className="lg:col-span-2">
           <div className="mb-2 text-sm text-gray-500">Visibility % by provider (last {days}d)</div>
@@ -51,9 +56,9 @@ export default async function OverviewPage({ searchParams }: { searchParams: Pro
             <VisibilityChart points={points} />
           </div>
         </div>
-        <TopSources brandId={activeBrandId || brands[0]?.id} provider={provider} days={days} />
+        {activeBrandId ? <TopSources brandId={activeBrandId} provider={provider} days={days} /> : null}
       </div>
-      <UnderperformingPrompts orgId={org.id} provider={provider} days={days} />
+      {org ? <UnderperformingPrompts orgId={org.id} provider={provider} days={days} /> : null}
     </div>
   );
 } 
