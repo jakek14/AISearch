@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 
 export default function PromptDeleteDialog({
@@ -16,6 +16,7 @@ export default function PromptDeleteDialog({
   const [pending, start] = useTransition();
   const [error, setError] = useState<string | null>(null);
   const router = useRouter();
+  const formRef = useRef<HTMLFormElement>(null);
 
   function viewAnswer() {
     const url = new URL(window.location.href);
@@ -25,13 +26,16 @@ export default function PromptDeleteDialog({
 
   function handleDelete() {
     setError(null);
-    const fd = new FormData();
-    fd.set("id", id);
+    const form = formRef.current;
+    if (!form) return;
     start(async () => {
       try {
-        await onDelete(fd);
-        setOpen(false);
-        router.refresh();
+        form.requestSubmit();
+        // Wait a tick so the navigation/cache can update
+        setTimeout(() => {
+          setOpen(false);
+          router.refresh();
+        }, 50);
       } catch (e) {
         setError((e as Error).message);
       }
@@ -40,7 +44,7 @@ export default function PromptDeleteDialog({
 
   return (
     <>
-      <button onClick={() => setOpen(true)} className="text-left text-gray-900 hover:underline">
+      <button onClick={() => setOpen(true)} className="text-left text-gray-900 underline underline-offset-2">
         {text}
       </button>
       {open && (
@@ -49,6 +53,9 @@ export default function PromptDeleteDialog({
             <div className="mb-2 text-sm text-gray-600">Prompt</div>
             <div className="mb-4 text-gray-900">{text}</div>
             {error && <div className="mb-2 rounded border border-red-200 bg-red-50 p-2 text-sm text-red-700">{error}</div>}
+            <form ref={formRef} action={onDelete} className="hidden">
+              <input type="hidden" name="id" value={id} />
+            </form>
             <div className="flex items-center justify-end gap-2">
               <button onClick={() => setOpen(false)} className="rounded border px-3 py-1 text-sm text-gray-700 hover:bg-gray-50">
                 Cancel
