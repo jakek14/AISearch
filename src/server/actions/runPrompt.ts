@@ -54,6 +54,17 @@ export async function runPromptAction(params: { promptId: string; provider: Prov
       if (!citationsToSave.length) {
         citationsToSave = citationsFromText(result.text);
       }
+      // Top-up citations from answer text to ensure we capture up to 5 unique domains
+      if (citationsToSave.length < 5) {
+        const parsedFromText = citationsFromText(result.text);
+        const seenDomains = new Set<string>(citationsToSave.map((c) => c.domain));
+        for (const c of parsedFromText) {
+          if (!c.domain || seenDomains.has(c.domain)) continue;
+          seenDomains.add(c.domain);
+          citationsToSave.push({ ...c, rankHint: citationsToSave.length + 1 });
+          if (citationsToSave.length >= 5) break;
+        }
+      }
 
       if (citationsToSave.length) {
         await tx.citation.createMany({

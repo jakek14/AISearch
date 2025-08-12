@@ -7,10 +7,12 @@ export default function PromptDeleteDialog({
   id,
   text,
   onDelete,
+  renderTrigger,
 }: {
   id: string;
   text: string;
   onDelete: (formData: FormData) => Promise<void>;
+  renderTrigger?: (open: () => void) => React.ReactNode;
 }) {
   const [open, setOpen] = useState(false);
   const [pending, start] = useTransition();
@@ -44,9 +46,13 @@ export default function PromptDeleteDialog({
 
   return (
     <>
-      <button onClick={() => setOpen(true)} className="text-left text-gray-900 underline underline-offset-2">
-        {text}
-      </button>
+      {renderTrigger ? (
+        renderTrigger(() => setOpen(true))
+      ) : (
+        <button onClick={() => setOpen(true)} className="text-left text-gray-900 underline underline-offset-2">
+          {text}
+        </button>
+      )}
       {open && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
           <div className="w-full max-w-lg rounded-lg border border-gray-200 bg-white p-4 shadow-lg">

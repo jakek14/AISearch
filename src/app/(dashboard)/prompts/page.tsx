@@ -245,10 +245,28 @@ export default async function PromptsPage({ searchParams }: { searchParams: Prom
               return (
                 <tr key={r.prompt.id} className="border-t align-top">
                   <td className="p-2 w-8">
-                    <input type="checkbox" aria-label="Select row" />
+                    <PromptDeleteDialog
+                      id={r.prompt.id}
+                      text={r.prompt.text}
+                      onDelete={deletePrompt}
+                      renderTrigger={(open) => (
+                        <input
+                          type="checkbox"
+                          aria-label="Select row"
+                          onChange={(e) => {
+                            if (e.target.checked) open();
+                          }}
+                        />
+                      )}
+                    />
                   </td>
                   <td className="p-2 max-w-xl">
-                    <PromptDeleteDialog id={r.prompt.id} text={r.prompt.text} onDelete={deletePrompt} />
+                    <a
+                      href={`?view=${encodeURIComponent(r.prompt.id)}`}
+                      className="text-gray-900 underline underline-offset-2"
+                    >
+                      {r.prompt.text}
+                    </a>
                   </td>
                   <td className="p-2 tabular-nums">{r.position ?? "—"}</td>
                   <td className="p-2">—</td>
