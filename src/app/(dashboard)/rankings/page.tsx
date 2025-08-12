@@ -1,14 +1,33 @@
 import { prisma } from "@/lib/prisma";
 
+type RankingSnapshotRow = {
+  id: string;
+  brandId: string;
+  topic: string;
+  provider: string;
+  visibilityPct: number;
+  rank: number;
+  prevRank: number | null;
+  date: Date;
+};
+
 export const dynamic = "force-dynamic";
 
 export default async function RankingsPage({ searchParams }: { searchParams: Record<string, string | undefined> }) {
   const sp = await searchParams;
   const provider = sp.provider || "openai";
   const topic = sp.topic;
-  const where: any = { provider };
+  const where: Partial<{ provider: string; topic: string }> = { provider };
   if (topic) where.topic = topic;
-  const rows = await prisma.brandRankingSnapshot.findMany({ where, orderBy: [{ date: "desc" }, { rank: "asc" }], take: 100 });
+
+  type BrandRankingSnapshotClient = { findMany: (args: unknown) => Promise<unknown[]> };
+  const brs = (prisma as unknown as { brandRankingSnapshot: BrandRankingSnapshotClient }).brandRankingSnapshot;
+  const rows = (await brs.findMany({
+    where,
+    orderBy: [{ date: "desc" }, { rank: "asc" }],
+    take: 100,
+  })) as RankingSnapshotRow[];
+
   const brandMap = new Map((await prisma.brand.findMany()).map((b) => [b.id, b.name]));
 
   return (
@@ -44,7 +63,7 @@ export default async function RankingsPage({ searchParams }: { searchParams: Rec
               <td>{r.visibilityPct.toFixed(1)}</td>
               <td>{r.rank}</td>
               <td>{r.prevRank ?? "—"}</td>
-              <td>{r.date.toISOString().slice(0, 10)}</td>
+              <td>{new Date(r.date).toISOString().slice(0, 10)}</td>
             </tr>
           ))}
         </tbody>

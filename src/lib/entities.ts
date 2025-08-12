@@ -1,4 +1,4 @@
-import type { Brand, Competitor } from "@prisma/client";
+import type { Brand } from "@prisma/client";
 
 export type EntityRegexes = {
   namePatterns: RegExp[];

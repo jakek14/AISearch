@@ -1,4 +1,3 @@
-import type { VisibilitySnapshot, Brand } from "@prisma/client";
 
 export type RankedRow = {
   brandId: string;

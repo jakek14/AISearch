@@ -23,7 +23,7 @@ const isPublicRoute = createRouteMatcher([
   "/api/(.*)", // allow APIs in demo mode
 ]);
 
-function passthroughMiddleware(_req: NextRequest) {
+function passthroughMiddleware() {
   return NextResponse.next();
 }
 

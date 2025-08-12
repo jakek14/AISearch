@@ -2,13 +2,19 @@ import { prisma } from "@/lib/prisma";
 
 export const dynamic = "force-dynamic";
 
+type SourceAggRow = { id: string; brandId: string; provider: string; domain: string; citations: number };
+
+type SourceAggClient = { findMany: (args: unknown) => Promise<unknown[]> };
+
 export default async function SourcesPage({ searchParams }: { searchParams: Record<string, string | undefined> }) {
   const sp = await searchParams;
   const provider = sp.provider || "openai";
   const brandName = sp.brand;
   const brand = brandName ? await prisma.brand.findFirst({ where: { name: brandName } }) : await prisma.brand.findFirst();
-  const where: any = { provider, ...(brand ? { brandId: brand.id } : {}) };
-  const rows = await prisma.sourceAgg.findMany({ where, orderBy: { citations: "desc" }, take: 100 });
+  const where: Partial<{ provider: string; brandId: string }> = { provider, ...(brand ? { brandId: brand.id } : {}) };
+
+  const client = (prisma as unknown as { sourceAgg: SourceAggClient }).sourceAgg;
+  const rows = (await client.findMany({ where, orderBy: { citations: "desc" }, take: 100 })) as SourceAggRow[];
 
   return (
     <div className="space-y-4">

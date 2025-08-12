@@ -20,14 +20,12 @@ const optionalSchema = z.object({
 
 const required = requiredSchema.safeParse(process.env);
 if (!required.success) {
-  // eslint-disable-next-line no-console
   console.error("❌ Missing required env vars:", required.error.flatten().fieldErrors);
   throw new Error("Missing required environment variables");
 }
 
 const optional = optionalSchema.safeParse(process.env);
 if (!optional.success) {
-  // eslint-disable-next-line no-console
   console.warn("⚠️ Optional env vars invalid:", optional.error.flatten().fieldErrors);
 }
 
