@@ -5,6 +5,7 @@ import type { Prisma } from "@prisma/client";
 import { computeMentionPosition } from "@/lib/position";
 import { revalidatePath } from "next/cache";
 import PromptDeleteDialog from "./components/PromptDeleteDialog";
+import { ensureBaseOrg } from "@/lib/bootstrap";
 
 function faviconUrl(domain: string, size: number = 24) {
   return `https://www.google.com/s2/favicons?domain=${encodeURIComponent(domain)}&sz=${size}`;
@@ -105,7 +106,9 @@ async function getData(orgId: string, filters: { topic?: string; provider?: stri
 async function getOrgIdSafe(): Promise<string | null> {
   try {
     const org = await prisma.org.findFirst();
-    return org?.id ?? null;
+    if (org) return org.id;
+    const created = await ensureBaseOrg();
+    return created.id;
   } catch {
     return null;
   }

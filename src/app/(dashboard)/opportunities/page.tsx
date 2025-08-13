@@ -1,6 +1,7 @@
 export const dynamic = "force-dynamic";
 import { prisma } from "@/lib/prisma";
 import type { Opportunity, Prisma } from "@prisma/client";
+import { ensureBaseOrg } from "@/lib/bootstrap";
 
 function formatDate(d?: Date | null) {
   return d ? new Date(d).toISOString().slice(0, 10) : "—";
@@ -32,6 +33,7 @@ async function getOpportunities(orgId: string, filters: { status?: string }): Pr
 }
 
 export default async function OpportunitiesPage({ searchParams }: { searchParams: Promise<Record<string, string | undefined>> }) {
+  await ensureBaseOrg();
   const org = await prisma.org.findFirst();
   const sp = await searchParams;
   const rows = org ? await getOpportunities(org.id, { status: sp.status }) : [];

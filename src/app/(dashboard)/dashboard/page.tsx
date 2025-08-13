@@ -5,6 +5,7 @@ import TopSources from "@/app/(dashboard)/components/TopSources";
 import UnderperformingPrompts from "@/app/(dashboard)/components/UnderperformingPrompts";
 import Toolbar from "@/app/(dashboard)/components/Toolbar";
 import { prisma } from "@/lib/prisma";
+import { ensureBaseOrg } from "@/lib/bootstrap";
 
 type ProviderKey = "openai" | "anthropic" | "gemini";
 
@@ -32,8 +33,10 @@ async function getVisibilityPoints(brandId: string, provider?: string, days: num
 
 async function safeGetOrgAndBrands() {
 	try {
-		const org = await prisma.org.findFirst();
-		if (!org) return { org: null as unknown as { id: string } | null, brands: [] as { id: string; name: string }[] };
+		let org = await prisma.org.findFirst();
+		if (!org) {
+			org = await prisma.org.create({ data: { name: "Your Org" } });
+		}
 		const brands = await prisma.brand.findMany({ where: { orgId: org.id }, orderBy: { name: "asc" }, select: { id: true, name: true } });
 		return { org, brands };
 	} catch {
@@ -43,7 +46,8 @@ async function safeGetOrgAndBrands() {
 
 export default async function DashboardPage({ searchParams }: { searchParams: Promise<Record<string, string | undefined>> }) {
 	const sp = await searchParams;
-	// Removed ensureDemoData seeding to keep user data blank by default
+	// Ensure base org exists so the app boots after a reset
+	await ensureBaseOrg();
 
 	const { org, brands } = await safeGetOrgAndBrands();
 	const activeBrandId = sp.brandId || brands[0]?.id;
