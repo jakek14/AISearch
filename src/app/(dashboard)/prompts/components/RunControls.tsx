@@ -22,19 +22,19 @@ export default function RunControls({ promptId }: { promptId: string }) {
         }
       }
 
-      const results = await Promise.allSettled(providers.map((p) => runProvider(p)));
-      const anySuccess = results.some((r) => r.status === "fulfilled");
-      if (!anySuccess) {
-        const firstErr = results.find((r) => r.status === "rejected") as PromiseRejectedResult | undefined;
-        throw new Error(firstErr?.reason?.message || "All provider runs failed");
-      }
+      // Start all providers concurrently
+      const tasks = providers.map((p) => runProvider(p));
 
-      // Open the answer drawer for this prompt (will also refresh table state)
+      // Open as soon as the first provider succeeds
+      await Promise.any(tasks);
+
       const url = new URL(window.location.href);
       url.searchParams.set("view", promptId);
       window.location.href = url.toString();
+
+      // Do not await the remaining tasks; they will complete in the background
     } catch (e) {
-      setError((e as Error).message);
+      setError((e as Error).message || "Run failed");
     } finally {
       setLoading(false);
     }

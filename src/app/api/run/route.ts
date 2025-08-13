@@ -23,6 +23,7 @@ export async function POST(req: Request) {
     // Update visibility snapshots so the dashboard chart reflects the new run
     await recomputeVisibilitySnapshots();
     revalidatePath("/dashboard");
+    revalidatePath("/prompts");
 
     return NextResponse.json({ run, answer, citations });
   } catch (err) {
