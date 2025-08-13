@@ -7,54 +7,34 @@ import Toolbar from "@/app/(dashboard)/components/Toolbar";
 import { prisma } from "@/lib/prisma";
 import { ensureBaseOrg } from "@/lib/bootstrap";
 
-type ProviderKey = "openai" | "anthropic" | "gemini";
-
-async function getVisibilityPoints(brandId: string, provider?: string, days: number = 30) {
-	try {
-		const since = new Date(Date.now() - days * 24 * 60 * 60 * 1000);
-		const rows = await prisma.visibilitySnapshot.findMany({
-			where: { brandId, date: { gte: since } },
-			orderBy: { date: "asc" },
-		});
-		const byDay = new Map<string, { date: string; openai?: number; anthropic?: number; gemini?: number }>();
-		for (const r of rows) {
-			if (provider && r.provider !== provider) continue;
-			const key = r.date.toISOString().slice(0, 10);
-			const entry = byDay.get(key) || { date: key };
-			const p = r.provider as ProviderKey;
-			(entry[p] as number | undefined) = r.visibilityPct;
-			byDay.set(key, entry);
-		}
-		return Array.from(byDay.values());
-	} catch {
-		return [] as { date: string; openai?: number; anthropic?: number; gemini?: number }[];
+async function getMultiBrandVisibility(orgId: string, days: number, provider?: string) {
+	const since = new Date(Date.now() - days * 24 * 60 * 60 * 1000);
+	const brands = await prisma.brand.findMany({ where: { orgId }, select: { id: true, name: true } });
+	if (brands.length === 0) return { points: [] as Array<Record<string, number | string>>, series: [] as { key: string; name: string; color: string }[] };
+	const brandColors = ["#3b82f6", "#6b7280", "#f59e0b", "#10b981", "#ef4444", "#8b5cf6"];
+	const series = brands.map((b, i) => ({ key: b.id, name: b.name, color: brandColors[i % brandColors.length] }));
+	const rows = await prisma.visibilitySnapshot.findMany({
+		where: { brandId: { in: brands.map((b) => b.id) }, date: { gte: since }, provider: provider ? provider : undefined },
+		orderBy: { date: "asc" },
+	});
+	const byDay = new Map<string, Record<string, number | string>>();
+	for (const r of rows) {
+		const key = r.date.toISOString().slice(0, 10);
+		const entry = byDay.get(key) || { date: key };
+		entry[r.brandId] = r.visibilityPct;
+		byDay.set(key, entry);
 	}
-}
-
-async function safeGetOrgAndBrands() {
-	try {
-		let org = await prisma.org.findFirst();
-		if (!org) {
-			org = await prisma.org.create({ data: { name: "Your Org" } });
-		}
-		const brands = await prisma.brand.findMany({ where: { orgId: org.id }, orderBy: { name: "asc" }, select: { id: true, name: true } });
-		return { org, brands };
-	} catch {
-		return { org: null as unknown as { id: string } | null, brands: [] as { id: string; name: string }[] };
-	}
+	return { points: Array.from(byDay.values()), series };
 }
 
 export default async function DashboardPage({ searchParams }: { searchParams: Promise<Record<string, string | undefined>> }) {
 	const sp = await searchParams;
-	// Ensure base org exists so the app boots after a reset
 	await ensureBaseOrg();
-
-	const { org, brands } = await safeGetOrgAndBrands();
-	const activeBrandId = sp.brandId || brands[0]?.id;
+	const org = await prisma.org.findFirst();
 	const days = Number(sp.days || "30");
 	const provider = sp.provider && sp.provider !== "all" ? sp.provider : undefined;
-
-	const points = activeBrandId ? await getVisibilityPoints(activeBrandId, provider, days) : [];
+	const brands = org ? await prisma.brand.findMany({ where: { orgId: org.id }, select: { id: true, name: true } }) : [];
+	const { points, series } = org ? await getMultiBrandVisibility(org.id, days, provider) : { points: [], series: [] };
 
 	return (
 		<div className="space-y-6">
@@ -65,10 +45,11 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
 			{org ? <KPICards orgId={org.id} /> : null}
 			<div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
 				<div className="lg:col-span-2">
-					<VisibilityChart points={points} />
+					<VisibilityChart points={points} series={series} />
 				</div>
 				<div className="lg:col-span-1 space-y-6">
-					{activeBrandId ? <TopSources brandId={activeBrandId} provider={provider} days={days} /> : null}
+					{/* TopSources needs an active brand; if user has none yet, this will be empty */}
+					{brands[0] ? <TopSources brandId={brands[0].id} provider={provider} days={days} /> : null}
 					{org ? <UnderperformingPrompts orgId={org.id} provider={provider} days={days} /> : null}
 				</div>
 			</div>
