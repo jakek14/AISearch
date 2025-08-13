@@ -31,12 +31,11 @@ function timeAgo(date: Date): string {
   return `${days} d. ago`;
 }
 
-async function getData(orgId: string, filters: { topic?: string; provider?: string; hasMentions?: string; from?: string; to?: string }) {
+async function getData(orgId: string, filters: { provider?: string; hasMentions?: string; from?: string; to?: string }) {
   const brand = await prisma.brand.findFirst({ where: { orgId } });
   const competitors = await prisma.competitor.findMany({ where: { brandId: brand?.id || "" } });
 
   const wherePrompt: Prisma.PromptWhereInput = { orgId };
-  if (filters.topic) wherePrompt.topic = filters.topic;
   const prompts = await prisma.prompt.findMany({ where: wherePrompt, orderBy: { createdAt: "desc" } });
   const promptIds = prompts.map((p) => p.id);
 
@@ -66,7 +65,7 @@ async function getData(orgId: string, filters: { topic?: string; provider?: stri
     const latest = list[0];
     const latestAnswer = latest?.answer;
 
-    // Visibility (%): share of answers (under current filters) that include your brand name OR cite one of your domains
+    // Visibility (%)
     const denom = list.length;
     let visibleCount = 0;
     if (brand) {
@@ -78,14 +77,13 @@ async function getData(orgId: string, filters: { topic?: string; provider?: stri
     }
     const visibilityPct = denom > 0 ? (visibleCount / denom) * 100 : 0;
 
-    // Rank: average earliest position across answers where brand appeared
+    // Rank
     let rank: number | null = null;
     if (brand && list.length > 0) {
       const competitorNames = competitors.map((c) => c.name);
       const positions: number[] = [];
       for (const r of list) {
         const text = r.answer?.text || "";
-        // Skip answers without mentions of brand
         const mentioned = r.answer?.mentions?.some((m) => m.brandId === brand.id) ?? false;
         const cited = (r.answer?.citations || []).some((c) => brand.domains.includes(c.domain));
         if (!mentioned && !cited) continue;
@@ -94,18 +92,18 @@ async function getData(orgId: string, filters: { topic?: string; provider?: stri
       }
       if (positions.length > 0) {
         const avg = positions.reduce((a, b) => a + b, 0) / positions.length;
-        rank = Math.round(avg * 10) / 10; // one decimal place
+        rank = Math.round(avg * 10) / 10;
       }
     }
 
-    // Sentiment 0–100: average of per-answer brand-specific scores across answers where the brand appeared
+    // Sentiment 0–100
     let sentiment: number | null = null;
     if (brand && list.length > 0) {
       const scores: number[] = [];
       for (const r of list) {
         const mentioned = r.answer?.mentions?.some((m) => m.brandId === brand.id) ?? false;
         const cited = (r.answer?.citations || []).some((c) => brand.domains.includes(c.domain));
-        if (!mentioned && !cited) continue; // only answers that include your brand
+        if (!mentioned && !cited) continue;
         const score = computeBrandSentimentScore(r.answer?.text || "", brand);
         if (score != null) scores.push(score);
       }
@@ -115,7 +113,7 @@ async function getData(orgId: string, filters: { topic?: string; provider?: stri
       }
     }
 
-    // Build Top: order by earliest appearance in latest answer, include max 3, use favicons
+    // Build Top
     const tops: { key: string; type: "brand" | "competitor"; domain: string }[] = [];
     if (latestAnswer) {
       const lower = latestAnswer.text.toLowerCase();
@@ -167,7 +165,7 @@ export default async function PromptsPage({ searchParams }: { searchParams: Prom
   async function createPrompt(formData: FormData) {
     "use server";
     const text = String(formData.get("text") || "").trim();
-    const topic = String(formData.get("topic") || "").trim() || "general";
+    const topic = "general";
     if (!text || !orgId) return;
     await prisma.prompt.create({ data: { orgId, text, topic } });
     revalidatePath("/prompts");
@@ -200,7 +198,6 @@ export default async function PromptsPage({ searchParams }: { searchParams: Prom
   if (orgId) {
     try {
       rows = await getData(orgId, {
-        topic: sp.topic,
         provider: sp.provider,
         hasMentions: sp.hasMentions,
         from: sp.from,
@@ -226,15 +223,10 @@ export default async function PromptsPage({ searchParams }: { searchParams: Prom
           <label className="block text-sm font-medium">Prompt text</label>
           <textarea name="text" className="mt-1 w-full rounded border p-2" rows={3} placeholder="e.g., best X tools"></textarea>
         </div>
-        <div>
-          <label className="block text-sm font-medium">Topic</label>
-          <input name="topic" className="mt-1 w-full rounded border p-2" placeholder="e.g., project-management" />
-        </div>
         <button className="rounded bg-black px-4 py-2 text-white" disabled={!orgId}>Add Prompt</button>
       </form>
 
-      <form className="grid grid-cols-1 gap-3 rounded border bg-white p-4 sm:grid-cols-2 lg:grid-cols-6">
-        <input name="topic" placeholder="Topic" defaultValue={sp.topic || ""} className="rounded border px-2 py-1" />
+      <form className="grid grid-cols-1 gap-3 rounded border bg-white p-4 sm:grid-cols-2 lg:grid-cols-5">
         <select name="provider" defaultValue={sp.provider || ""} className="rounded border px-2 py-1">
           <option value="">All providers</option>
           <option value="openai">OpenAI</option>
