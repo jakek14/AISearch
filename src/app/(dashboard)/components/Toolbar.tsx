@@ -29,7 +29,7 @@ export default function Toolbar({ brands, competitors = [] }: ToolbarProps) {
     else params.delete("brandId");
     if (provider && provider !== "all") params.set("provider", provider);
     else params.delete("provider");
-    router.push("/?" + params.toString());
+    router.push("/dashboard?" + params.toString());
   }
 
   return (
