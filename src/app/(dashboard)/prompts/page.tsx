@@ -64,8 +64,19 @@ async function getData(orgId: string, filters: { topic?: string; provider?: stri
     const list = byPrompt.get(p.id) || [];
     const latest = list[0];
     const latestAnswer = latest?.answer;
-    const youMentioned = list.some((r) => r.answer?.mentions?.some((m) => m.brandId === brand?.id));
-    const visibilityPct = youMentioned ? 100 : 0;
+
+    // Visibility (%): share of answers (under current filters) that include your brand name OR cite one of your domains
+    const denom = list.length;
+    let visibleCount = 0;
+    if (brand) {
+      for (const r of list) {
+        const mentioned = r.answer?.mentions?.some((m) => m.brandId === brand.id) ?? false;
+        const cited = (r.answer?.citations || []).some((c) => brand.domains.includes(c.domain));
+        if (mentioned || cited) visibleCount += 1;
+      }
+    }
+    const visibilityPct = denom > 0 ? (visibleCount / denom) * 100 : 0;
+
     // Position heuristic for your brand in latest answer
     const position = latestAnswer && brand ? computeMentionPosition(latestAnswer.text, [brand.name, ...competitors.map((c) => c.name)]) : null;
 
@@ -97,7 +108,7 @@ async function getData(orgId: string, filters: { topic?: string; provider?: stri
     };
   });
 
-  if (filters.hasMentions === "you") rows = rows.filter((r) => r.visibilityPct === 100);
+  if (filters.hasMentions === "you") rows = rows.filter((r) => Math.round(r.visibilityPct) === 100);
   if (filters.hasMentions === "competitors") rows = rows.filter((r) => r.tops.some((t) => t.type === "competitor"));
 
   return rows;
