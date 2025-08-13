@@ -73,7 +73,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 					<div>
 						<div className="mb-2 text-xs font-semibold uppercase tracking-wide text-gray-500">General</div>
 						<nav className="space-y-1">
-							<NavLink href="/" label="Dashboard" icon={LayoutGrid} />
+							<NavLink href="/dashboard" label="Dashboard" icon={LayoutGrid} />
 							<NavLink href="/prompts" label="Prompts" icon={MessageSquare} />
 							<NavLink href="/sources" label="Sources" icon={Globe2} />
 							<NavLink href="/company" label="Company" icon={Briefcase} />
