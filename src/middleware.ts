@@ -23,11 +23,8 @@ const isPublicRoute = createRouteMatcher([
   "/api/(.*)", // allow APIs in demo mode
 ]);
 
-function passthroughMiddleware(req: Request) {
-  const requestHeaders = new Headers(req.headers);
-  // In demo mode, inject a stable demo user id for per-user scoping
-  if (!requestHeaders.get("x-user-id")) requestHeaders.set("x-user-id", "demo-user");
-  return NextResponse.next({ request: { headers: requestHeaders } });
+function passthroughMiddleware() {
+  return NextResponse.next();
 }
 
 const protectedMiddleware = clerkMiddleware(async (auth, req) => {
@@ -35,7 +32,7 @@ const protectedMiddleware = clerkMiddleware(async (auth, req) => {
   await auth.protect();
 });
 
-const middlewareImpl = isClerkConfigured ? protectedMiddleware : (passthroughMiddleware as any);
+const middlewareImpl = isClerkConfigured ? protectedMiddleware : passthroughMiddleware;
 
 export default middlewareImpl;
 

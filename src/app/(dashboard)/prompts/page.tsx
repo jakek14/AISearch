@@ -6,7 +6,6 @@ import type { Prisma } from "@prisma/client";
 import { computeMentionPosition } from "@/lib/position";
 import { revalidatePath } from "next/cache";
 import PromptDeleteDialog from "./components/PromptDeleteDialog";
-import { headers } from "next/headers";
 
 function Badge({ children }: { children: React.ReactNode }) {
   return <span className="rounded bg-gray-100 px-2 py-0.5 text-xs text-gray-700">{children}</span>;
@@ -35,14 +34,13 @@ function timeAgo(date: Date): string {
   return `${days} d. ago`;
 }
 
-async function getData(orgId: string, filters: { topic?: string; provider?: string; hasMentions?: string; from?: string; to?: string }, userId?: string | null) {
+async function getData(orgId: string, filters: { topic?: string; provider?: string; hasMentions?: string; from?: string; to?: string }) {
   const brand = await prisma.brand.findFirst({ where: { orgId } });
   const competitors = await prisma.competitor.findMany({ where: { brandId: brand?.id || "" } });
   const competitorDomains = new Set<string>(competitors.flatMap((c) => c.domains));
   const competitorNames = new Set<string>(competitors.map((c) => c.name.toLowerCase()));
 
   const wherePrompt: Prisma.PromptWhereInput = { orgId };
-  if (userId) (wherePrompt as Record<string, unknown>)["createdByUserId"] = userId;
   if (filters.topic) wherePrompt.topic = filters.topic;
   const prompts = await prisma.prompt.findMany({ where: wherePrompt, orderBy: { createdAt: "desc" } });
   const promptIds = prompts.map((p) => p.id);
@@ -128,21 +126,13 @@ async function getOrgIdSafe(): Promise<string | null> {
 export default async function PromptsPage({ searchParams }: { searchParams: Promise<Record<string, string | undefined>> }) {
   const sp = await searchParams;
   const orgId = await getOrgIdSafe();
-  const hdrs = await headers();
-  const userId = hdrs.get("x-user-id");
 
   async function createPrompt(formData: FormData) {
     "use server";
     const text = String(formData.get("text") || "").trim();
     const topic = String(formData.get("topic") || "").trim() || "general";
     if (!text || !orgId) return;
-    const data: Prisma.PromptCreateInput = {
-      org: { connect: { id: orgId } },
-      text,
-      topic,
-      ...(userId ? { createdBy: { connect: { id: userId } } } : {}),
-    };
-    await prisma.prompt.create({ data });
+    await prisma.prompt.create({ data: { orgId, text, topic } });
     revalidatePath("/prompts");
   }
 
@@ -178,7 +168,7 @@ export default async function PromptsPage({ searchParams }: { searchParams: Prom
         hasMentions: sp.hasMentions,
         from: sp.from,
         to: sp.to,
-      }, userId);
+      });
     } catch {
       rows = [];
     }

@@ -32,7 +32,6 @@ model User {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
   org       Org      @relation(fields: [orgId], references: [id])
-  prompts   Prompt[]
 }
 
 model Brand {
@@ -60,7 +59,6 @@ model Competitor {
 model Prompt {
   id        String   @id @default(cuid())
   orgId     String
-  createdByUserId String?
   text      String
   topic     String
   locale    String   @default("en-US")
@@ -68,10 +66,7 @@ model Prompt {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
   org       Org      @relation(fields: [orgId], references: [id])
-  createdBy User?    @relation(fields: [createdByUserId], references: [id])
   providerRuns ProviderRun[]
-
-  @@index([createdByUserId])
 }
 
 model ProviderRun {
