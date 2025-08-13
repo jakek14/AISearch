@@ -4,6 +4,7 @@ import { useMemo, useState } from "react";
 
 export type ToolbarProps = {
   brands: { id: string; name: string }[];
+  competitors?: { id: string; name: string }[];
 };
 
 const PROVIDERS = [
@@ -12,7 +13,7 @@ const PROVIDERS = [
   { id: "gemini", label: "Gemini" },
 ] as const;
 
-export default function Toolbar({ brands }: ToolbarProps) {
+export default function Toolbar({ brands, competitors = [] }: ToolbarProps) {
   const router = useRouter();
   const sp = useSearchParams();
   const [days, setDays] = useState(sp.get("days") || "7");
@@ -43,10 +44,16 @@ export default function Toolbar({ brands }: ToolbarProps) {
       </div>
       <div className="flex items-center gap-2">
         <span className="text-xs text-gray-500">Brand</span>
-        <select value={brandId} onChange={(e) => setBrandId(e.target.value)} className="min-w-[8rem] rounded-md border px-2 py-1 text-sm">
+        <select value={brandId} onChange={(e) => setBrandId(e.target.value)} className="min-w-[12rem] rounded-md border px-2 py-1 text-sm">
           {brands.map((b) => (
             <option key={b.id} value={b.id}>
               {b.name}
+            </option>
+          ))}
+          {competitors.length > 0 && <option disabled>──────────</option>}
+          {competitors.map((c) => (
+            <option key={c.id} value={`competitor:${c.id}`}>
+              {c.name}
             </option>
           ))}
         </select>
