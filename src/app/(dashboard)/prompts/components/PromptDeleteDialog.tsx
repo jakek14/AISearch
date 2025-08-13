@@ -7,23 +7,30 @@ export default function PromptDeleteDialog({
   id,
   text,
   onDelete,
-  renderTrigger,
+  checkboxTrigger,
 }: {
   id: string;
   text: string;
   onDelete: (formData: FormData) => Promise<void>;
-  renderTrigger?: (open: () => void) => React.ReactNode;
+  checkboxTrigger?: boolean;
 }) {
   const [open, setOpen] = useState(false);
   const [pending, start] = useTransition();
   const [error, setError] = useState<string | null>(null);
   const router = useRouter();
   const formRef = useRef<HTMLFormElement>(null);
+  const checkboxRef = useRef<HTMLInputElement>(null);
 
   function viewAnswer() {
     const url = new URL(window.location.href);
     url.searchParams.set("view", id);
     window.location.href = url.toString();
+  }
+
+  function close() {
+    setOpen(false);
+    // Uncheck the checkbox trigger if present
+    if (checkboxRef.current) checkboxRef.current.checked = false;
   }
 
   function handleDelete() {
@@ -33,9 +40,8 @@ export default function PromptDeleteDialog({
     start(async () => {
       try {
         form.requestSubmit();
-        // Wait a tick so the navigation/cache can update
         setTimeout(() => {
-          setOpen(false);
+          close();
           router.refresh();
         }, 50);
       } catch (e) {
@@ -46,8 +52,15 @@ export default function PromptDeleteDialog({
 
   return (
     <>
-      {renderTrigger ? (
-        renderTrigger(() => setOpen(true))
+      {checkboxTrigger ? (
+        <input
+          ref={checkboxRef}
+          type="checkbox"
+          aria-label="Select row"
+          onChange={(e) => {
+            if (e.target.checked) setOpen(true);
+          }}
+        />
       ) : (
         <button onClick={() => setOpen(true)} className="text-left text-gray-900 underline underline-offset-2">
           {text}
@@ -63,7 +76,7 @@ export default function PromptDeleteDialog({
               <input type="hidden" name="id" value={id} />
             </form>
             <div className="flex items-center justify-end gap-2">
-              <button onClick={() => setOpen(false)} className="rounded border px-3 py-1 text-sm text-gray-700 hover:bg-gray-50">
+              <button onClick={close} className="rounded border px-3 py-1 text-sm text-gray-700 hover:bg-gray-50">
                 Cancel
               </button>
               <button onClick={viewAnswer} className="rounded border px-3 py-1 text-sm text-gray-700 hover:bg-gray-50">
