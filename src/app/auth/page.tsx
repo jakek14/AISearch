@@ -3,13 +3,13 @@
 import { ThemeSupa } from "@supabase/auth-ui-shared";
 import { Auth } from "@supabase/auth-ui-react";
 import { getSupabaseClient } from "@/lib/supabase";
-import { useEffect } from "react";
+import { useEffect, useMemo } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 
 export default function AuthPage() {
-	const supabase = getSupabaseClient();
-	const sp = useSearchParams();
 	const router = useRouter();
+	const sp = useSearchParams();
+	const supabase = useMemo(() => getSupabaseClient(), []);
 	useEffect(() => {
 		if (!supabase) return;
 		supabase.auth.getSession().then((s) => {
@@ -19,7 +19,7 @@ export default function AuthPage() {
 			if (session) router.replace("/dashboard");
 		});
 		return () => sub?.subscription.unsubscribe();
-	}, []);
+	}, [router, supabase]);
 	if (!supabase) {
 		return (
 			<div className="rounded border border-yellow-200 bg-yellow-50 p-3 text-sm text-yellow-900">
@@ -36,7 +36,7 @@ export default function AuthPage() {
 					supabaseClient={supabase}
 					appearance={{ theme: ThemeSupa }}
 					providers={[]}
-					view={view as any}
+					view={view}
 				/>
 			</div>
 		</div>

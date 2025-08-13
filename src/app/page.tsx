@@ -12,7 +12,7 @@ export default function LandingPage() {
 				</nav>
 			</header>
 			<main className="mx-auto max-w-6xl px-6 py-16">
-				<h1 className="max-w-3xl text-4xl font-semibold leading-tight tracking-tight text-gray-900">Understand your brand\'s visibility in AI answers.</h1>
+				<h1 className="max-w-3xl text-4xl font-semibold leading-tight tracking-tight text-gray-900">Understand your brand&rsquo;s visibility in AI answers.</h1>
 				<p className="mt-4 max-w-2xl text-gray-600">Track mentions, citations, and share of AI voice across providers. Identify top sources and act on opportunities.</p>
 				<div className="mt-8 flex gap-3">
 					<Link href="/auth?view=sign_up" className="rounded bg-black px-4 py-2 text-white">Get started</Link>
