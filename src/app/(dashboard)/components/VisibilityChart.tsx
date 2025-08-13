@@ -1,5 +1,6 @@
 "use client";
 import { LineChart, Line, XAxis, YAxis, Tooltip, Legend, ResponsiveContainer, CartesianGrid } from "recharts";
+import Link from "next/link";
 
 type Series = { key: string; name: string; color: string };
 
@@ -22,24 +23,38 @@ export default function VisibilityChart({ points, series }: { points: Array<Reco
     URL.revokeObjectURL(url);
   }
 
+  const isEmpty = !points?.length || !series?.length;
+
   return (
     <div className="h-80 w-full rounded border bg-white p-4">
       <div className="mb-2 flex items-center justify-between">
         <div className="text-sm text-gray-600">Visibility % (mentions per day)</div>
-        <button onClick={downloadCSV} className="rounded border px-2 py-1 text-sm">Download</button>
+        <button onClick={downloadCSV} className="rounded border px-2 py-1 text-sm" disabled={isEmpty}>Download</button>
       </div>
-      <ResponsiveContainer width="100%" height="100%">
-        <LineChart data={points} margin={{ top: 10, right: 20, bottom: 0, left: 0 }}>
-          <CartesianGrid strokeDasharray="3 3" />
-          <XAxis dataKey="date" tick={{ fontSize: 12 }} />
-          <YAxis domain={[0, 100]} tick={{ fontSize: 12 }} tickFormatter={(v) => `${v}%`} />
-          <Tooltip formatter={(val) => `${val as number}%`} />
-          <Legend />
-          {series.map((s) => (
-            <Line key={s.key} type="monotone" dataKey={s.key} name={s.name} stroke={s.color} dot={false} strokeWidth={2} />
-          ))}
-        </LineChart>
-      </ResponsiveContainer>
+      {isEmpty ? (
+        <div className="flex h-[calc(100%-2rem)] items-center justify-center">
+          <div className="text-center text-sm text-gray-500">
+            No data yet. Add your company and run a prompt.
+            <div className="mt-2 flex justify-center gap-2">
+              <Link href="/company" className="rounded border px-2 py-1">Add company</Link>
+              <Link href="/prompts" className="rounded border px-2 py-1">Add prompt</Link>
+            </div>
+          </div>
+        </div>
+      ) : (
+        <ResponsiveContainer width="100%" height="100%">
+          <LineChart data={points} margin={{ top: 10, right: 20, bottom: 0, left: 0 }}>
+            <CartesianGrid strokeDasharray="3 3" />
+            <XAxis dataKey="date" tick={{ fontSize: 12 }} />
+            <YAxis domain={[0, 100]} tick={{ fontSize: 12 }} tickFormatter={(v) => `${v}%`} />
+            <Tooltip formatter={(val) => `${val as number}%`} />
+            <Legend />
+            {series.map((s) => (
+              <Line key={s.key} type="monotone" dataKey={s.key} name={s.name} stroke={s.color} dot={false} strokeWidth={2} />
+            ))}
+          </LineChart>
+        </ResponsiveContainer>
+      )}
     </div>
   );
 } 
