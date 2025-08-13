@@ -1,4 +1,5 @@
 import { prisma } from "./prisma";
+import { getOrCreateUserAndOrg } from "./user";
 
 function randomInt(min: number, max: number): number {
   return Math.floor(Math.random() * (max - min + 1)) + min;
@@ -13,11 +14,9 @@ function startOfDay(date: Date): Date {
 }
 
 export async function ensureDemoData() {
-  // Org
-  let org = await prisma.org.findFirst({ where: { name: "Demo Org" } });
-  if (!org) {
-    org = await prisma.org.create({ data: { name: "Demo Org" } });
-  }
+  const { orgId } = await getOrCreateUserAndOrg();
+  const org = await prisma.org.findUnique({ where: { id: orgId } });
+  if (!org) return { org: { id: orgId, name: "" } as any, brand: null as any };
 
   // Brand
   let brand = await prisma.brand.findFirst({ where: { orgId: org.id } });
