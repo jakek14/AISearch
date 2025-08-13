@@ -1,6 +1,5 @@
 import { prisma } from "@/lib/prisma";
 import AnswerDrawerMount from "./components/AnswerDrawerMount";
-import { ensureDemoData } from "@/lib/demo";
 import RunControls from "./components/RunControls";
 import type { Prisma } from "@prisma/client";
 import { computeMentionPosition } from "@/lib/position";
@@ -105,10 +104,6 @@ async function getData(orgId: string, filters: { topic?: string; provider?: stri
 
 async function getOrgIdSafe(): Promise<string | null> {
   try {
-    if (process.env.NODE_ENV !== "production") {
-      const seeded = await ensureDemoData();
-      return seeded.org.id;
-    }
     const org = await prisma.org.findFirst();
     return org?.id ?? null;
   } catch {

@@ -1,6 +1,5 @@
 export const dynamic = "force-dynamic";
 import { prisma } from "@/lib/prisma";
-import { ensureDemoData } from "@/lib/demo";
 import type { Opportunity, Prisma } from "@prisma/client";
 
 function formatDate(d?: Date | null) {
@@ -33,9 +32,9 @@ async function getOpportunities(orgId: string, filters: { status?: string }): Pr
 }
 
 export default async function OpportunitiesPage({ searchParams }: { searchParams: Promise<Record<string, string | undefined>> }) {
-  const { org } = await ensureDemoData();
+  const org = await prisma.org.findFirst();
   const sp = await searchParams;
-  const rows = await getOpportunities(org.id, { status: sp.status });
+  const rows = org ? await getOpportunities(org.id, { status: sp.status }) : [];
 
   return (
     <div className="space-y-6">

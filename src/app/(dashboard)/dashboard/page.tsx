@@ -5,7 +5,6 @@ import TopSources from "@/app/(dashboard)/components/TopSources";
 import UnderperformingPrompts from "@/app/(dashboard)/components/UnderperformingPrompts";
 import Toolbar from "@/app/(dashboard)/components/Toolbar";
 import { prisma } from "@/lib/prisma";
-import { ensureDemoData } from "@/lib/demo";
 
 type ProviderKey = "openai" | "anthropic" | "gemini";
 
@@ -44,13 +43,7 @@ async function safeGetOrgAndBrands() {
 
 export default async function DashboardPage({ searchParams }: { searchParams: Promise<Record<string, string | undefined>> }) {
 	const sp = await searchParams;
-	if (process.env.NODE_ENV !== "production") {
-		try {
-			await ensureDemoData();
-		} catch {
-			// ignore seed failures locally
-		}
-	}
+	// Removed ensureDemoData seeding to keep user data blank by default
 
 	const { org, brands } = await safeGetOrgAndBrands();
 	const activeBrandId = sp.brandId || brands[0]?.id;
@@ -68,14 +61,13 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
 			{org ? <KPICards orgId={org.id} /> : null}
 			<div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
 				<div className="lg:col-span-2">
-					<div className="mb-2 text-sm text-gray-500">Visibility % by provider (last {days}d)</div>
-					<div className="overflow-hidden rounded-xl border border-gray-200 bg-white p-4 shadow-sm">
-						<VisibilityChart points={points} />
-					</div>
+					<VisibilityChart points={points} />
 				</div>
-				{activeBrandId ? <TopSources brandId={activeBrandId} provider={provider} days={days} /> : null}
+				<div className="lg:col-span-1 space-y-6">
+					{activeBrandId ? <TopSources brandId={activeBrandId} provider={provider} days={days} /> : null}
+					{org ? <UnderperformingPrompts orgId={org.id} provider={provider} days={days} /> : null}
+				</div>
 			</div>
-			{org ? <UnderperformingPrompts orgId={org.id} provider={provider} days={days} /> : null}
 		</div>
 	);
 } 
