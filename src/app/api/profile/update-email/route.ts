@@ -4,9 +4,15 @@ import { createClient } from "@supabase/supabase-js";
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
 
+type UpdateEmailPayload = { email: string; accessToken: string };
+
 export async function POST(req: Request) {
 	try {
-		const { email, accessToken } = await req.json().catch(() => ({} as any));
+		const body = (await req.json().catch(() => null)) as unknown;
+		if (!body || typeof body !== "object") {
+			return NextResponse.json({ error: "Invalid payload" }, { status: 400 });
+		}
+		const { email, accessToken } = body as Partial<UpdateEmailPayload>;
 		if (!email || !accessToken) {
 			return NextResponse.json({ error: "Missing email or accessToken" }, { status: 400 });
 		}

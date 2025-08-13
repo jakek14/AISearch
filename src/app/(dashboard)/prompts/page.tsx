@@ -33,7 +33,6 @@ function timeAgo(date: Date): string {
 async function getData(orgId: string, filters: { topic?: string; provider?: string; hasMentions?: string; from?: string; to?: string }) {
   const brand = await prisma.brand.findFirst({ where: { orgId } });
   const competitors = await prisma.competitor.findMany({ where: { brandId: brand?.id || "" } });
-  const competitorDomains = new Set<string>(competitors.flatMap((c) => c.domains));
 
   const wherePrompt: Prisma.PromptWhereInput = { orgId };
   if (filters.topic) wherePrompt.topic = filters.topic;
