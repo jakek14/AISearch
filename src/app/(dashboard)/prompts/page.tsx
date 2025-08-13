@@ -6,6 +6,7 @@ import { computeMentionPosition } from "@/lib/position";
 import { revalidatePath } from "next/cache";
 import PromptDeleteDialog from "./components/PromptDeleteDialog";
 import { ensureBaseOrg } from "@/lib/bootstrap";
+import { computeBrandSentimentScore } from "@/lib/sentiment";
 
 function faviconUrl(domain: string, size: number = 24) {
   return `https://www.google.com/s2/favicons?domain=${encodeURIComponent(domain)}&sz=${size}`;
@@ -97,6 +98,23 @@ async function getData(orgId: string, filters: { topic?: string; provider?: stri
       }
     }
 
+    // Sentiment 0–100: average of per-answer brand-specific scores across answers where the brand appeared
+    let sentiment: number | null = null;
+    if (brand && list.length > 0) {
+      const scores: number[] = [];
+      for (const r of list) {
+        const mentioned = r.answer?.mentions?.some((m) => m.brandId === brand.id) ?? false;
+        const cited = (r.answer?.citations || []).some((c) => brand.domains.includes(c.domain));
+        if (!mentioned && !cited) continue; // only answers that include your brand
+        const score = computeBrandSentimentScore(r.answer?.text || "", brand);
+        if (score != null) scores.push(score);
+      }
+      if (scores.length > 0) {
+        const avg = scores.reduce((a, b) => a + b, 0) / scores.length;
+        sentiment = Math.round(avg);
+      }
+    }
+
     // Build Top: order by earliest appearance in latest answer, include max 3, use favicons
     const tops: { key: string; type: "brand" | "competitor"; domain: string }[] = [];
     if (latestAnswer) {
@@ -119,7 +137,7 @@ async function getData(orgId: string, filters: { topic?: string; provider?: stri
     return {
       prompt: p,
       rank,
-      sentiment: null as null | "pos" | "neg" | "neu",
+      sentiment,
       visibilityPct,
       tops,
     };
@@ -268,7 +286,7 @@ export default async function PromptsPage({ searchParams }: { searchParams: Prom
                     </a>
                   </td>
                   <td className="p-2 tabular-nums">{r.rank != null ? r.rank.toFixed(1) : "—"}</td>
-                  <td className="p-2">—</td>
+                  <td className="p-2 tabular-nums">{r.sentiment != null ? r.sentiment : "—"}</td>
                   <td className="p-2 tabular-nums">{Math.round(r.visibilityPct)}%</td>
                   <td className="p-2">
                     <div className="flex flex-wrap gap-1">
