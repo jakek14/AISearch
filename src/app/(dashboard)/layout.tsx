@@ -75,6 +75,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           <div>
             <div className="mb-2 text-xs font-semibold uppercase tracking-wide text-gray-500">Settings</div>
             <nav className="space-y-1">
+              <NavLink href="/profile" label="Profile" icon={Users2} />
               <NavLink href="/billing" label="Billing" icon={CreditCard} />
               <NavLink href="/subscriptions" label="Subscriptions" icon={Receipt} />
             </nav>
