@@ -7,10 +7,6 @@ import { computeMentionPosition } from "@/lib/position";
 import { revalidatePath } from "next/cache";
 import PromptDeleteDialog from "./components/PromptDeleteDialog";
 
-function Badge({ children }: { children: React.ReactNode }) {
-  return <span className="rounded bg-gray-100 px-2 py-0.5 text-xs text-gray-700">{children}</span>;
-}
-
 function faviconUrl(domain: string, size: number = 24) {
   return `https://www.google.com/s2/favicons?domain=${encodeURIComponent(domain)}&sz=${size}`;
 }
@@ -38,7 +34,6 @@ async function getData(orgId: string, filters: { topic?: string; provider?: stri
   const brand = await prisma.brand.findFirst({ where: { orgId } });
   const competitors = await prisma.competitor.findMany({ where: { brandId: brand?.id || "" } });
   const competitorDomains = new Set<string>(competitors.flatMap((c) => c.domains));
-  const competitorNames = new Set<string>(competitors.map((c) => c.name.toLowerCase()));
 
   const wherePrompt: Prisma.PromptWhereInput = { orgId };
   if (filters.topic) wherePrompt.topic = filters.topic;
@@ -71,7 +66,6 @@ async function getData(orgId: string, filters: { topic?: string; provider?: stri
     const latest = list[0];
     const latestAnswer = latest?.answer;
     const youMentioned = list.some((r) => r.answer?.mentions?.some((m) => m.brandId === brand?.id));
-    const competitorsMentioned = list.some((r) => r.answer?.citations?.some((c) => competitorDomains.has(c.domain)));
     const visibilityPct = youMentioned ? 100 : 0;
     // Position heuristic for your brand in latest answer
     const position = latestAnswer && brand ? computeMentionPosition(latestAnswer.text, [brand.name, ...competitors.map((c) => c.name)]) : null;

@@ -15,8 +15,10 @@ function startOfDay(date: Date): Date {
 
 export async function ensureDemoData() {
   const { orgId } = await getOrCreateUserAndOrg();
-  const org = await prisma.org.findUnique({ where: { id: orgId } });
-  if (!org) return { org: { id: orgId, name: "" } as any, brand: null as any };
+  let org = await prisma.org.findUnique({ where: { id: orgId } });
+  if (!org) {
+    org = await prisma.org.create({ data: { id: orgId, name: "User Org" } });
+  }
 
   // Brand
   let brand = await prisma.brand.findFirst({ where: { orgId: org.id } });
