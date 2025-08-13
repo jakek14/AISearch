@@ -39,6 +39,7 @@ export default async function SourcesPage({ searchParams }: { searchParams: Prom
   const sp = await searchParams;
   const providerParam = sp.provider && sp.provider !== "all" ? sp.provider : undefined;
   const days = Math.max(1, Number(sp.days || "7"));
+  const query = (sp.q || "").toString().trim().toLowerCase();
 
   let rows: Row[] = [];
   let totalRuns = 0;
@@ -106,6 +107,11 @@ export default async function SourcesPage({ searchParams }: { searchParams: Prom
         }))
         .sort((a, b) => b.usedPct - a.usedPct);
 
+      // Filter by query (search)
+      if (query) {
+        rows = rows.filter((r) => r.domain.toLowerCase().includes(query));
+      }
+
       topDomains = rows.slice(0, 5).map((r) => r.domain);
 
       // Build chart points: usage% per day per top domain
@@ -127,6 +133,9 @@ export default async function SourcesPage({ searchParams }: { searchParams: Prom
     topDomains = [];
   }
 
+  // Compute rank after final sorting/filtering
+  const rowsWithRank = rows.map((r, i) => ({ ...r, rank: i + 1 }));
+
   return (
     <div className="space-y-4">
       <h1 className="text-2xl font-semibold">Sources</h1>
@@ -146,6 +155,12 @@ export default async function SourcesPage({ searchParams }: { searchParams: Prom
           <option value="anthropic">Anthropic</option>
           <option value="gemini">Gemini</option>
         </select>
+        <input
+          name="q"
+          defaultValue={sp.q || ""}
+          placeholder="Search domains..."
+          className="ml-2 flex-1 rounded border px-2 py-1"
+        />
         <button className="ml-auto rounded bg-black px-3 py-1 text-sm text-white">Apply</button>
       </form>
 
@@ -156,55 +171,60 @@ export default async function SourcesPage({ searchParams }: { searchParams: Prom
       )}
 
       <div className="overflow-hidden rounded border bg-white">
-        <table className="w-full table-auto text-sm">
-          <thead className="bg-gray-50">
-            <tr className="text-left text-gray-600">
-              <th className="px-3 py-2">Domain</th>
-              <th className="px-3 py-2">Type</th>
-              <th className="px-3 py-2">Used</th>
-              <th className="px-3 py-2">Avg. Citations</th>
-            </tr>
-          </thead>
-          <tbody>
-            {rows.slice(0, 100).map((r) => (
-              <tr key={r.domain} className="border-t">
-                <td className="px-3 py-2">
-                  <div className="flex items-center gap-2">
-                    <img
-                      src={faviconUrl(r.domain, 24)}
-                      width={16}
-                      height={16}
-                      alt=""
-                      className="h-4 w-4 rounded"
-                      loading="lazy"
-                    />
-                    <span>{r.domain}</span>
-                  </div>
-                </td>
-                <td className="px-3 py-2">
-                  <span className={
-                    r.type === "Editorial"
-                      ? "rounded bg-indigo-50 px-2 py-0.5 text-xs text-indigo-700"
-                      : r.type === "UGC"
-                      ? "rounded bg-emerald-50 px-2 py-0.5 text-xs text-emerald-700"
-                      : "rounded bg-gray-100 px-2 py-0.5 text-xs text-gray-700"
-                  }>
-                    {r.type}
-                  </span>
-                </td>
-                <td className="px-3 py-2 tabular-nums">{Math.round(r.usedPct * 100)}%</td>
-                <td className="px-3 py-2 tabular-nums">{r.avgCitations.toFixed(1)}</td>
+        {/* Scroll container sized to ~15 rows (approx 40px each) */}
+        <div className="max-h-[600px] overflow-y-auto">
+          <table className="w-full table-auto text-sm">
+            <thead className="bg-gray-50">
+              <tr className="text-left text-gray-600">
+                <th className="px-3 py-2">Rank</th>
+                <th className="px-3 py-2">Domain</th>
+                <th className="px-3 py-2">Type</th>
+                <th className="px-3 py-2">Used</th>
+                <th className="px-3 py-2">Avg. Citations</th>
               </tr>
-            ))}
-            {rows.length === 0 && (
-              <tr>
-                <td colSpan={4} className="px-3 py-6 text-center text-gray-600">
-                  No data.
-                </td>
-              </tr>
-            )}
-          </tbody>
-        </table>
+            </thead>
+            <tbody>
+              {rowsWithRank.map((r) => (
+                <tr key={r.domain} className="border-t">
+                  <td className="px-3 py-2 tabular-nums">{r.rank}</td>
+                  <td className="px-3 py-2">
+                    <div className="flex items-center gap-2">
+                      <img
+                        src={faviconUrl(r.domain, 24)}
+                        width={16}
+                        height={16}
+                        alt=""
+                        className="h-4 w-4 rounded"
+                        loading="lazy"
+                      />
+                      <span>{r.domain}</span>
+                    </div>
+                  </td>
+                  <td className="px-3 py-2">
+                    <span className={
+                      r.type === "Editorial"
+                        ? "rounded bg-indigo-50 px-2 py-0.5 text-xs text-indigo-700"
+                        : r.type === "UGC"
+                        ? "rounded bg-emerald-50 px-2 py-0.5 text-xs text-emerald-700"
+                        : "rounded bg-gray-100 px-2 py-0.5 text-xs text-gray-700"
+                    }>
+                      {r.type}
+                    </span>
+                  </td>
+                  <td className="px-3 py-2 tabular-nums">{Math.round(r.usedPct * 100)}%</td>
+                  <td className="px-3 py-2 tabular-nums">{r.avgCitations.toFixed(1)}</td>
+                </tr>
+              ))}
+              {rowsWithRank.length === 0 && (
+                <tr>
+                  <td colSpan={5} className="px-3 py-6 text-center text-gray-600">
+                    No data.
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        </div>
       </div>
     </div>
   );
