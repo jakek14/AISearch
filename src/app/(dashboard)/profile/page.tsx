@@ -1,7 +1,8 @@
 "use client";
 
 import { useEffect, useState, useTransition } from "react";
-import { supabase } from "@/lib/supabase";
+import { getSupabaseClient } from "@/lib/supabase";
+import type { UserResponse } from "@supabase/supabase-js";
 
 export default function ProfilePage() {
   const [email, setEmail] = useState("");
@@ -9,14 +10,16 @@ export default function ProfilePage() {
   const [pending, start] = useTransition();
 
   useEffect(() => {
+    const supabase = getSupabaseClient();
     if (!supabase) return;
-    supabase.auth.getUser().then(({ data, error }) => {
-      if (error) return;
-      setEmail(data.user?.email || "");
+    supabase.auth.getUser().then((res: UserResponse) => {
+      if (res.error) return;
+      setEmail(res.data.user?.email || "");
     });
   }, []);
 
   function updateEmail() {
+    const supabase = getSupabaseClient();
     if (!supabase) return;
     setStatus(null);
     start(async () => {
@@ -27,10 +30,12 @@ export default function ProfilePage() {
   }
 
   function signOut() {
+    const supabase = getSupabaseClient();
     if (!supabase) return;
     supabase.auth.signOut().then(() => (window.location.href = "/"));
   }
 
+  const supabase = getSupabaseClient();
   if (!supabase) {
     return (
       <div className="space-y-3">
