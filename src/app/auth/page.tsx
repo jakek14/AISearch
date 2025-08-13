@@ -3,13 +3,18 @@
 import { ThemeSupa } from "@supabase/auth-ui-shared";
 import { Auth } from "@supabase/auth-ui-react";
 import { getSupabaseClient } from "@/lib/supabase";
-import { useEffect, useMemo } from "react";
+import { useEffect, useMemo, useState, useTransition } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 
 export default function AuthPage() {
 	const router = useRouter();
 	const sp = useSearchParams();
 	const supabase = useMemo(() => getSupabaseClient(), []);
+	const [email, setEmail] = useState("");
+	const [password, setPassword] = useState("");
+	const [pending, start] = useTransition();
+	const [error, setError] = useState<string | null>(null);
+
 	useEffect(() => {
 		if (!supabase) return;
 		supabase.auth.getSession().then((s) => {
@@ -28,17 +33,49 @@ export default function AuthPage() {
 		);
 	}
 	const view = sp.get("view") === "sign_up" ? "sign_up" : "sign_in";
+
+	async function handleNoConfirmSignUp() {
+		if (!supabase) return;
+		setError(null);
+		start(async () => {
+			const res = await fetch("/api/auth/sign-up", {
+				method: "POST",
+				headers: { "content-type": "application/json" },
+				body: JSON.stringify({ email, password }),
+			});
+			if (!res.ok) {
+				const j = await res.json().catch(() => ({}));
+				setError(j.error || "Sign up failed");
+				return;
+			}
+			const { error: signInError } = await supabase.auth.signInWithPassword({ email, password });
+			if (signInError) {
+				setError(signInError.message);
+				return;
+			}
+			router.replace("/dashboard");
+		});
+	}
+
 	return (
-		<div className="max-w-md">
-			<h1 className="mb-4 text-2xl font-semibold">{view === "sign_up" ? "Sign up" : "Sign in"}</h1>
-			<div className="rounded border bg-white p-4">
-				<Auth
-					supabaseClient={supabase}
-					appearance={{ theme: ThemeSupa }}
-					providers={[]}
-					view={view}
-				/>
-			</div>
+		<div className="max-w-md space-y-6">
+			<h1 className="text-2xl font-semibold">{view === "sign_up" ? "Sign up" : "Sign in"}</h1>
+			{view === "sign_up" ? (
+				<div className="rounded border bg-white p-4 space-y-2">
+					<label className="block text-sm font-medium">Email</label>
+					<input className="w-full rounded border px-2 py-1" value={email} onChange={(e) => setEmail(e.target.value)} />
+					<label className="block text-sm font-medium">Password</label>
+					<input className="w-full rounded border px-2 py-1" type="password" value={password} onChange={(e) => setPassword(e.target.value)} />
+					<button onClick={handleNoConfirmSignUp} disabled={pending} className="rounded bg-black px-3 py-1 text-white">
+						{pending ? "Creating…" : "Create account"}
+					</button>
+					{error && <div className="text-sm text-red-700">{error}</div>}
+				</div>
+			) : (
+				<div className="rounded border bg-white p-4">
+					<Auth supabaseClient={supabase} appearance={{ theme: ThemeSupa }} providers={[]} view="sign_in" />
+				</div>
+			)}
 		</div>
 	);
 } 
