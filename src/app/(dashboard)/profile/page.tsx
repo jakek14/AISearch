@@ -1,40 +1,66 @@
 "use client";
 
-import { SignedIn, SignedOut, SignOutButton, UserProfile } from "@clerk/nextjs";
-
-const hasClerk = Boolean(
-	process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY &&
-		!String(process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY).includes("placeholder")
-);
+import { useEffect, useState, useTransition } from "react";
+import { supabase } from "@/lib/supabase";
 
 export default function ProfilePage() {
-	if (!hasClerk) {
-		return (
-			<div className="space-y-3">
-				<h1 className="text-2xl font-semibold">Profile</h1>
-				<div className="rounded border border-yellow-200 bg-yellow-50 p-3 text-sm text-yellow-900">
-					Authentication is not configured. Add your Clerk keys to enable profile management and sign out.
-				</div>
-			</div>
-		);
-	}
+  const [email, setEmail] = useState("");
+  const [status, setStatus] = useState<string | null>(null);
+  const [pending, start] = useTransition();
 
-	return (
-		<div className="space-y-4">
-			<h1 className="text-2xl font-semibold">Profile</h1>
-			<SignedIn>
-				<div className="rounded border bg-white p-2">
-					<UserProfile />
-				</div>
-				<div>
-					<SignOutButton>
-						<button className="mt-3 rounded border px-3 py-1 text-sm">Sign out</button>
-					</SignOutButton>
-				</div>
-			</SignedIn>
-			<SignedOut>
-				<div className="rounded border border-yellow-200 bg-yellow-50 p-3 text-sm text-yellow-900">You are signed out.</div>
-			</SignedOut>
-		</div>
-	);
+  useEffect(() => {
+    if (!supabase) return;
+    supabase.auth.getUser().then(({ data, error }) => {
+      if (error) return;
+      setEmail(data.user?.email || "");
+    });
+  }, []);
+
+  function updateEmail() {
+    if (!supabase) return;
+    setStatus(null);
+    start(async () => {
+      const { error } = await supabase.auth.updateUser({ email });
+      if (error) setStatus(error.message);
+      else setStatus("Check your inbox to confirm the change.");
+    });
+  }
+
+  function signOut() {
+    if (!supabase) return;
+    supabase.auth.signOut().then(() => (window.location.href = "/"));
+  }
+
+  if (!supabase) {
+    return (
+      <div className="space-y-3">
+        <h1 className="text-2xl font-semibold">Profile</h1>
+        <div className="rounded border border-yellow-200 bg-yellow-50 p-3 text-sm text-yellow-900">
+          Supabase is not configured. Set NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_ANON_KEY.
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-4">
+      <h1 className="text-2xl font-semibold">Profile</h1>
+      <div className="rounded border bg-white p-4 space-y-2 max-w-md">
+        <label className="block text-sm font-medium">Email</label>
+        <input
+          value={email}
+          onChange={(e) => setEmail(e.target.value)}
+          className="w-full rounded border px-2 py-1"
+          type="email"
+        />
+        <button onClick={updateEmail} disabled={pending} className="rounded bg-black px-3 py-1 text-white">
+          {pending ? "Saving…" : "Update email"}
+        </button>
+        {status && <div className="text-sm text-gray-700">{status}</div>}
+      </div>
+      <div>
+        <button onClick={signOut} className="rounded border px-3 py-1 text-sm">Sign out</button>
+      </div>
+    </div>
+  );
 } 

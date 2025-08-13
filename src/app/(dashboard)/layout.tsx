@@ -1,16 +1,10 @@
 "use client";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { UserButton, SignedIn } from "@clerk/nextjs";
 import { LayoutGrid, MessageSquare, Globe2, Tag, Users2, CreditCard, Receipt, Briefcase } from "lucide-react";
 import { useEffect, useState } from "react";
-
-const hasClerk = Boolean(
-  process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY &&
-    !String(process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY).includes("placeholder")
-);
-
 import type { LucideIcon } from "lucide-react";
+import { supabase } from "@/lib/supabase";
 
 function NavLink({ href, label, icon: Icon, badge }: { href: string; label: string; icon: LucideIcon; badge?: string | number }) {
   const pathname = usePathname();
@@ -24,6 +18,29 @@ function NavLink({ href, label, icon: Icon, badge }: { href: string; label: stri
         <Icon className="h-4 w-4" /> {label}
       </span>
       {badge ? <span className="rounded-full bg-gray-200 px-2 py-0.5 text-xs text-gray-700">{badge}</span> : null}
+    </Link>
+  );
+}
+
+function AuthMenu() {
+  const [email, setEmail] = useState<string | null>(null);
+  useEffect(() => {
+    if (!supabase) return;
+    supabase.auth.getUser().then(({ data }) => setEmail(data.user?.email ?? null));
+    const { data: sub } = supabase.auth.onAuthStateChange((_e, session) => setEmail(session?.user?.email ?? null));
+    return () => sub?.subscription.unsubscribe();
+  }, []);
+  if (!supabase) return null;
+  return email ? (
+    <button
+      onClick={() => supabase.auth.signOut().then(() => (window.location.href = "/"))}
+      className="rounded border px-2 py-1 text-xs"
+    >
+      Sign out
+    </button>
+  ) : (
+    <Link href="/auth" className="rounded border px-2 py-1 text-xs">
+      Sign in
     </Link>
   );
 }
@@ -46,11 +63,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           <Link href="/" className="font-semibold">
             Startup
           </Link>
-          {hasClerk ? (
-            <SignedIn>
-              <UserButton afterSignOutUrl="/" />
-            </SignedIn>
-          ) : null}
+          <AuthMenu />
         </div>
 
         <div className="space-y-6 p-4">
