@@ -1,17 +1,35 @@
 export function computeMentionPosition(answerText: string, orderedBrandNames: string[]): number | null {
   if (!answerText || orderedBrandNames.length === 0) return null;
   const lower = answerText.toLowerCase();
-  const indices = orderedBrandNames
-    .map((b, idx) => ({ idx: idx + 1, pos: lower.indexOf(b.toLowerCase()) }))
-    .filter((x) => x.pos >= 0)
-    .sort((a, b) => a.pos - b.pos);
-  if (indices.length === 0) return null;
+  const target = orderedBrandNames[0]?.toLowerCase();
+  if (!target) return null;
 
-  // Numbered list heuristic
-  const listMatch = lower.match(/\n\s*(\d+)[\.)]/);
-  if (listMatch) {
-    const listPos = parseInt(listMatch[1], 10);
-    if (!Number.isNaN(listPos)) return listPos;
+  // 1) Numbered/listed roundup heuristic: find lines like `1. Brand ...` or `2) Brand ...`
+  const lines = lower.split(/\r?\n/);
+  for (const line of lines) {
+    const m = line.match(/^\s*(\d+)[\.)]\s+(.*)$/);
+    if (m) {
+      const num = parseInt(m[1], 10);
+      const text = m[2] || "";
+      if (!Number.isNaN(num) && text.includes(target)) {
+        return num; // Use explicit list order when brand appears on that line
+      }
+    }
   }
-  return indices[0].idx;
+
+  // 2) Fallback: earliest-mention order among tracked brands in the text
+  const seen: Array<{ name: string; pos: number }> = [];
+  for (const name of orderedBrandNames) {
+    const idx = lower.indexOf(name.toLowerCase());
+    if (idx >= 0) {
+      seen.push({ name, pos: idx });
+    }
+  }
+  if (seen.length === 0) return null; // brand not mentioned
+
+  // Sort by first occurrence in the text
+  seen.sort((a, b) => a.pos - b.pos);
+  const rank = seen.findIndex((s) => s.name.toLowerCase() === target);
+  if (rank === -1) return null; // target brand absent
+  return rank + 1;
 } 

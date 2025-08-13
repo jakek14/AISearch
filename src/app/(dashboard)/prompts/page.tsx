@@ -77,8 +77,25 @@ async function getData(orgId: string, filters: { topic?: string; provider?: stri
     }
     const visibilityPct = denom > 0 ? (visibleCount / denom) * 100 : 0;
 
-    // Position heuristic for your brand in latest answer
-    const position = latestAnswer && brand ? computeMentionPosition(latestAnswer.text, [brand.name, ...competitors.map((c) => c.name)]) : null;
+    // Rank: average earliest position across answers where brand appeared
+    let rank: number | null = null;
+    if (brand && list.length > 0) {
+      const competitorNames = competitors.map((c) => c.name);
+      const positions: number[] = [];
+      for (const r of list) {
+        const text = r.answer?.text || "";
+        // Skip answers without mentions of brand
+        const mentioned = r.answer?.mentions?.some((m) => m.brandId === brand.id) ?? false;
+        const cited = (r.answer?.citations || []).some((c) => brand.domains.includes(c.domain));
+        if (!mentioned && !cited) continue;
+        const pos = computeMentionPosition(text, [brand.name, ...competitorNames]);
+        if (pos != null) positions.push(pos);
+      }
+      if (positions.length > 0) {
+        const avg = positions.reduce((a, b) => a + b, 0) / positions.length;
+        rank = Math.round(avg * 10) / 10; // one decimal place
+      }
+    }
 
     // Build Top: order by earliest appearance in latest answer, include max 3, use favicons
     const tops: { key: string; type: "brand" | "competitor"; domain: string }[] = [];
@@ -101,7 +118,7 @@ async function getData(orgId: string, filters: { topic?: string; provider?: stri
 
     return {
       prompt: p,
-      position,
+      rank,
       sentiment: null as null | "pos" | "neg" | "neu",
       visibilityPct,
       tops,
@@ -224,7 +241,7 @@ export default async function PromptsPage({ searchParams }: { searchParams: Prom
                 <input type="checkbox" aria-label="Select all" />
               </th>
               <th className="p-2 font-medium">Prompt</th>
-              <th className="p-2 font-medium">Position</th>
+              <th className="p-2 font-medium">Rank</th>
               <th className="p-2 font-medium">Sentiment</th>
               <th className="p-2 font-medium">Visibility</th>
               <th className="p-2 font-medium">Top</th>
@@ -250,7 +267,7 @@ export default async function PromptsPage({ searchParams }: { searchParams: Prom
                       {r.prompt.text}
                     </a>
                   </td>
-                  <td className="p-2 tabular-nums">{r.position ?? "—"}</td>
+                  <td className="p-2 tabular-nums">{r.rank != null ? r.rank.toFixed(1) : "—"}</td>
                   <td className="p-2">—</td>
                   <td className="p-2 tabular-nums">{Math.round(r.visibilityPct)}%</td>
                   <td className="p-2">
